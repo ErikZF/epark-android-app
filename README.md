@@ -1,2 +1,2 @@
-# residential-management-app
-Android mobile application for residential complex management, featuring modules for payments, security access control, and maintenance tracking.
+# epark-android-app
+Native Android application for urban municipal parking management, allowing drivers to manage parking sessions and municipal administrators to supervise operations remotely.
