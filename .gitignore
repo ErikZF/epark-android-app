@@ -1,0 +1,23 @@
+# Android Studio / IntelliJ files
+.idea/
+*.iml
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local configuration (Crucial: contains SDK paths)
+local.properties
+
+# Secrets and Keys (Do not leak your API keys or Keystores!)
+*.jks
+*.keystore
+secrets.xml
+
+# Log files
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
