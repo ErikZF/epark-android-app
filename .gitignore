@@ -21,3 +21,12 @@ secrets.xml
 # OS generated files
 .DS_Store
 Thumbs.db
+
+
+# Dotnet
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
