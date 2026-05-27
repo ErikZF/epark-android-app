@@ -1,0 +1,13 @@
+/* start iPhone 16 Pro Max css values*/
+body.iphone16promax #jim-mobile { position:relative; top:0px; left:0px; width:474px; height:986px; margin:auto; }
+body.iphone16promax #jim-case { background-image: url("../../../../../images/mobile/ios/ios15/iphone16promax@2x.png"); height:986px; width:474px; background-size:100% auto; z-index:100; /*must be over keyboards and comment bubbles*/ position:absolute; pointer-events:none; }
+body.iphone16promax #jim-mobile #simulation { position: relative; height: 100%; overflow:hidden; }
+body.iphone16promax #jim-mobile .ui-page { overflow:hidden; }
+
+/* orientation values */
+body.iphone16promax #jim-mobile.landscape { height:474px; width:986px; }
+body.iphone16promax #jim-case.portrait { transform:rotate(0deg); transform-origin:auto; }
+body.iphone16promax #jim-case.landscape { top:-2px; left:9px; transform:rotate(-90deg); transform-origin: 55.65% 24.85% 0; }
+body.iphone16promax #jim-container { clip-path: inset(0px round 50px); }
+body.iphone16promax #jim-container.portrait { position: absolute; top: 15px; left: 17px; width: 440px; height: 956px; }
+body.iphone16promax #jim-container.landscape { position: absolute; top: 20px; left: 13px; width: 956px; height: 440px; }

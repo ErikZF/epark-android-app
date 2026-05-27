@@ -1,0 +1,222 @@
+package com.example.myapplication.screens.user
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.myapplication.data.FakeData
+import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.theme.*
+
+@Composable
+fun LoginScreen(
+    onLoginResident: () -> Unit,
+    onLoginAdmin: () -> Unit,
+    onRegister: () -> Unit,
+) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var showRegister by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        BrandHeader()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+        ) {
+            Spacer(Modifier.height(12.dp))
+            BrandTitle()
+            Spacer(Modifier.height(24.dp))
+            AuthTabs(
+                selectedLogin = true,
+                onLoginClick = {},
+                onRegisterClick = onRegister,
+            )
+            Spacer(Modifier.height(20.dp))
+            EparkTextField(value = email, onValueChange = { email = it }, placeholder = "Correo electrónico")
+            Spacer(Modifier.height(12.dp))
+            EparkTextField(value = password, onValueChange = { password = it }, placeholder = "Contraseña", isPassword = true)
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                TextLink("¿Olvidaste tu contraseña?", onClick = {})
+            }
+            Spacer(Modifier.height(20.dp))
+            PrimaryButton(
+                text = "Continuar",
+                onClick = {
+                    if (email.trim() == FakeData.adminEmail) onLoginAdmin() else onLoginResident()
+                },
+            )
+            SecondaryButton(text = "Salir", onClick = {})
+            Spacer(Modifier.height(16.dp))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text("o continúa con", style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SocialButton("G", Modifier.weight(1f))
+                SocialButton("f", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun SocialButton(label: String, modifier: Modifier = Modifier) {
+    androidx.compose.material3.OutlinedButton(
+        onClick = {},
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderColor),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+        modifier = modifier.height(48.dp),
+    ) {
+        Text(label, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun RegisterScreen(
+    onRegisterSuccess: () -> Unit,
+    onLoginClick: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var cedula by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var showSuccess by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            BrandHeader()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+            ) {
+                Spacer(Modifier.height(12.dp))
+                BrandTitle()
+                Spacer(Modifier.height(24.dp))
+                AuthTabs(
+                    selectedLogin = false,
+                    onLoginClick = onLoginClick,
+                    onRegisterClick = {},
+                )
+                Spacer(Modifier.height(20.dp))
+                EparkTextField(value = name, onValueChange = { name = it }, placeholder = "Nombre completo")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = cedula, onValueChange = { cedula = it }, placeholder = "Número de cédula")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = email, onValueChange = { email = it }, placeholder = "Correo electrónico")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = password, onValueChange = { password = it }, placeholder = "Contraseña", isPassword = true)
+                Spacer(Modifier.height(20.dp))
+                PrimaryButton(text = "Crear cuenta", onClick = { showSuccess = true })
+                SecondaryButton(text = "Salir", onClick = {})
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+        if (showSuccess) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                SuccessDialog(
+                    title = "Éxito",
+                    primaryLabel = "Continuar",
+                    onPrimary = { onRegisterSuccess() },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun VehicleRegisterScreen(
+    onRegistered: () -> Unit,
+    onExit: () -> Unit,
+) {
+    var plate by remember { mutableStateOf("") }
+    var brand by remember { mutableStateOf("") }
+    var model by remember { mutableStateOf("") }
+    var year by remember { mutableStateOf("") }
+    var showSuccess by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            BrandHeader()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
+            ) {
+                Spacer(Modifier.height(12.dp))
+                BrandTitle()
+                Spacer(Modifier.height(24.dp))
+                PrimaryButton(
+                    text = "Registre al menos 1 carro para continuar",
+                    onClick = {},
+                    enabled = false,
+                )
+                Spacer(Modifier.height(16.dp))
+                EparkTextField(value = plate, onValueChange = { plate = it }, placeholder = "Placa del Vehículo")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = brand, onValueChange = { brand = it }, placeholder = "Marca")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = model, onValueChange = { model = it }, placeholder = "Modelo")
+                Spacer(Modifier.height(12.dp))
+                EparkTextField(value = year, onValueChange = { year = it }, placeholder = "Año")
+                Spacer(Modifier.height(20.dp))
+                PrimaryButton(text = "Registrar", onClick = { showSuccess = true })
+                SecondaryButton(text = "Salir", onClick = onExit)
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+        if (showSuccess) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                SuccessDialog(
+                    title = "Éxito",
+                    message = "¿Desea registrar más vehículos?",
+                    primaryLabel = "Sí",
+                    onPrimary = { showSuccess = false },
+                    secondaryLabel = "No",
+                    onSecondary = { onRegistered() },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ExitLauncherScreen(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        LogoBadge()
+        Spacer(Modifier.height(16.dp))
+        Text("e-park", style = androidx.compose.material3.MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(32.dp))
+        PrimaryButton(text = "Volver al inicio", onClick = onBack)
+    }
+}
