@@ -17,10 +17,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
-import com.example.myapplication.data.PaymentMethod
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.payment.PaymentMethodsViewModel
+import com.example.myapplication.ui.session.SessionConfigViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
@@ -30,9 +31,11 @@ fun SessionConfigScreen(
     onSelectOtherVehicle: () -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: SessionConfigViewModel = viewModel(),
 ) {
     var spaceDigits by remember { mutableStateOf(listOf("", "", "", "")) }
-    val currentVehicle = FakeData.vehicles.first()
+    val uiState by vm.state.collectAsState()
+    val currentVehicle = uiState.currentVehicle
 
     Scaffold(
         bottomBar = bottomBar,
@@ -105,9 +108,9 @@ fun SessionConfigScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(32.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text(currentVehicle.plate, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text(currentVehicle?.plate ?: "Sin vehículo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.width(12.dp))
-                        Text("${currentVehicle.brand} ${currentVehicle.model}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        Text("${currentVehicle?.brand ?: ""} ${currentVehicle?.model ?: ""}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(
@@ -133,8 +136,13 @@ fun PaymentScreen(
     onConfirm: () -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: PaymentMethodsViewModel = viewModel(),
 ) {
-    var selectedMethod by remember { mutableStateOf(FakeData.paymentMethods.first()) }
+    val uiState by vm.state.collectAsState()
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(uiState.methods) {
+        if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
+    }
 
     Scaffold(
         topBar = { EparkTopBar("Pago de sesión", onBack = onBack) },
@@ -152,11 +160,11 @@ fun PaymentScreen(
             Spacer(Modifier.height(8.dp))
             PaymentSummaryCard(total = "₡ 2.000", spaceNumber = "#0042", duration = "02:02")
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            FakeData.paymentMethods.forEach { method ->
+            uiState.methods.forEach { method ->
                 PaymentMethodCard(
                     method = method,
-                    selected = method.id == selectedMethod.id,
-                    onSelect = { selectedMethod = method },
+                    selected = method.id == selectedId,
+                    onSelect = { selectedId = method.id },
                 )
             }
             Spacer(Modifier.height(8.dp))

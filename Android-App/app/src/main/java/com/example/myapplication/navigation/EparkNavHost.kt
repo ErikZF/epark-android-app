@@ -5,8 +5,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.myapplication.data.FakeData
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.ui.components.*
@@ -95,13 +95,9 @@ fun EparkNavHost(navController: NavHostController) {
         // ── Auth ──────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
             LoginScreen(
-                onLoginResident = {
-                    navController.navigate(Routes.USER_HOME) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                },
-                onLoginAdmin = {
-                    navController.navigate(Routes.ADMIN_ZONES) {
+                onLoggedIn = { role ->
+                    val destination = if (role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
+                    navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -146,7 +142,7 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.SESSION_CONFIG) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            val zone = selectedZone ?: FakeData.zones.first()
+            val zone = selectedZone ?: StaticContent.placeholderZone
             SessionConfigScreen(
                 zone = zone,
                 onStartParking = { navController.navigate(Routes.PAYMENT) },
@@ -158,7 +154,7 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.PAYMENT) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            val zone = selectedZone ?: FakeData.zones.first()
+            val zone = selectedZone ?: StaticContent.placeholderZone
             PaymentScreen(
                 zone = zone,
                 onConfirm = { navController.navigate(Routes.PAYMENT_SUCCESS) },
@@ -301,7 +297,7 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.ADMIN_MANAGE_ZONE) { backStackEntry ->
             LaunchedEffect(Unit) { adminTab = AdminTab.ZONES }
             val zoneId = backStackEntry.arguments?.getString("zoneId") ?: ""
-            val zone = FakeData.zones.firstOrNull { it.id == zoneId } ?: FakeData.zones.first()
+            val zone = selectedZone?.takeIf { it.id == zoneId } ?: selectedZone ?: StaticContent.placeholderZone
             AdminManageZoneScreen(
                 zone = zone,
                 onBack = { navController.popBackStack() },

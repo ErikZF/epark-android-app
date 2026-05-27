@@ -17,8 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.StaticContent
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.payment.PaymentMethodsViewModel
+import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
@@ -29,7 +33,9 @@ fun ProfileScreen(
     onNotifications: () -> Unit,
     onLogout: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: ProfileViewModel = viewModel(),
 ) {
+    val uiState by vm.state.collectAsState()
     Scaffold(
         bottomBar = bottomBar,
         containerColor = AppBackground,
@@ -44,11 +50,11 @@ fun ProfileScreen(
             item {
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    AvatarBadge(FakeData.userInitials, size = 56)
+                    AvatarBadge(uiState.initials.ifBlank { "?" }, size = 56)
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(FakeData.userName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                        Text(FakeData.userEmail, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text(uiState.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                        Text(uiState.email, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar perfil", tint = TextSecondary)
@@ -57,9 +63,9 @@ fun ProfileScreen(
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatBox(FakeData.userSessions.toString(), "Sesiones", Modifier.weight(1f))
-                    StatBox(FakeData.userPaid.toString(), "Pagado", Modifier.weight(1f))
-                    StatBox(FakeData.userFinesCount.toString(), "Multas", Modifier.weight(1f))
+                    StatBox(uiState.sessionsCount.toString(), "Sesiones", Modifier.weight(1f))
+                    StatBox(uiState.paidCount.toString(), "Pagado", Modifier.weight(1f))
+                    StatBox(uiState.finesCount.toString(), "Multas", Modifier.weight(1f))
                 }
             }
             item {
@@ -72,7 +78,7 @@ fun ProfileScreen(
                     TextLink("+ Agregar", onClick = onAddVehicle)
                 }
             }
-            items(FakeData.vehicles) { vehicle ->
+            items(uiState.vehicles) { vehicle ->
                 VehicleCard(vehicle = vehicle)
             }
             item {
@@ -141,8 +147,12 @@ private fun MenuRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label
 
 @Composable
 fun EditProfileScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
-    var name by remember { mutableStateOf(FakeData.userName) }
-    var email by remember { mutableStateOf(FakeData.userEmail) }
+    var name by remember { mutableStateOf(AuthState.fullName) }
+    var email by remember { mutableStateOf(AuthState.email) }
+    val initials = remember {
+        name.trim().split(" ").filter { it.isNotBlank() }.take(2)
+            .joinToString("") { it.first().uppercase() }.ifBlank { "?" }
+    }
 
     Scaffold(
         topBar = { EparkTopBar("Editar perfil", onBack = onBack) },
@@ -158,7 +168,7 @@ fun EditProfileScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(Modifier.height(20.dp))
-            AvatarBadge(FakeData.userInitials, size = 72)
+            AvatarBadge(initials, size = 72)
             Spacer(Modifier.height(8.dp))
             TextLink("Editar foto de perfil", onClick = {})
             Spacer(Modifier.height(20.dp))
@@ -218,9 +228,16 @@ fun PaymentMethodsScreen(
     onBack: () -> Unit,
     onAddCard: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: PaymentMethodsViewModel = viewModel(),
 ) {
-    val methods = remember { FakeData.paymentMethods.toMutableStateList() }
-    var defaultId by remember { mutableStateOf(methods.firstOrNull { it.isDefault }?.id ?: "") }
+    val uiState by vm.state.collectAsState()
+    val methods = remember { mutableStateListOf<com.example.myapplication.data.PaymentMethod>() }
+    var defaultId by remember { mutableStateOf("") }
+    LaunchedEffect(uiState.methods) {
+        methods.clear()
+        methods.addAll(uiState.methods)
+        if (defaultId.isBlank()) defaultId = uiState.methods.firstOrNull { it.isDefault }?.id ?: ""
+    }
 
     Scaffold(
         topBar = { EparkTopBar("Formas de pago", onBack = onBack) },
@@ -312,7 +329,7 @@ fun NotificationsScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item { Spacer(Modifier.height(8.dp)) }
-            items(FakeData.notifications) { notif ->
+            items(StaticContent.notifications) { notif ->
                 NotificationCard(title = notif.title, body = notif.body, time = notif.time)
             }
             item { Spacer(Modifier.height(8.dp)) }
@@ -325,8 +342,13 @@ fun PayFineScreen(
     onConfirm: () -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: PaymentMethodsViewModel = viewModel(),
 ) {
-    var selectedMethod by remember { mutableStateOf(FakeData.paymentMethods.first()) }
+    val uiState by vm.state.collectAsState()
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(uiState.methods) {
+        if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
+    }
 
     Scaffold(
         topBar = { EparkTopBar("Pago de multas", onBack = onBack) },
@@ -344,11 +366,11 @@ fun PayFineScreen(
             Spacer(Modifier.height(8.dp))
             PaymentSummaryCard(total = "₡ 8.200", spaceNumber = "#0086", duration = "06:02")
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            FakeData.paymentMethods.forEach { method ->
+            uiState.methods.forEach { method ->
                 PaymentMethodCard(
                     method = method,
-                    selected = method.id == selectedMethod.id,
-                    onSelect = { selectedMethod = method },
+                    selected = method.id == selectedId,
+                    onSelect = { selectedId = method.id },
                 )
             }
             Spacer(Modifier.height(8.dp))

@@ -8,16 +8,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.history.HistoryViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun HistoryScreen(
     onPayFine: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: HistoryViewModel = viewModel(),
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    val uiState by vm.state.collectAsState()
 
     Scaffold(
         bottomBar = bottomBar,
@@ -41,17 +44,23 @@ fun HistoryScreen(
                 )
                 Spacer(Modifier.height(4.dp))
             }
+            if (uiState.loading) {
+                item { Text("Cargando...", color = TextMuted) }
+            }
+            uiState.error?.let { msg ->
+                item { ErrorBanner(msg) }
+            }
             if (selectedTab == 0) {
-                items(FakeData.sessions) { session ->
+                items(uiState.sessions) { session ->
                     ActivityRow(session = session)
                 }
             } else {
-                if (FakeData.userFines.any { !it.isPaid }) {
+                if (uiState.fines.any { !it.isPaid }) {
                     item {
-                        ErrorBanner("Tienes ${FakeData.userFines.count { !it.isPaid }} multas pendiente de pago")
+                        ErrorBanner("Tienes ${uiState.fines.count { !it.isPaid }} multas pendiente de pago")
                     }
                 }
-                items(FakeData.userFines) { fine ->
+                items(uiState.fines) { fine ->
                     FineRow(
                         fine = fine,
                         showPayButton = true,

@@ -17,8 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.StaticContent
+import com.example.myapplication.ui.admin.AdminFinesViewModel
+import com.example.myapplication.ui.admin.AdminReportsViewModel
+import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.theme.*
 
@@ -29,9 +33,11 @@ fun AdminZonesScreen(
     onManageZone: (ParkingZone) -> Unit,
     onAddZone: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: AdminZonesViewModel = viewModel(),
 ) {
     var search by remember { mutableStateOf("") }
-    val zones = FakeData.zones.filter {
+    val uiState by vm.state.collectAsState()
+    val zones = uiState.zones.filter {
         search.isBlank() || it.name.contains(search, ignoreCase = true)
     }
 
@@ -48,7 +54,7 @@ fun AdminZonesScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(FakeData.municipality, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text(StaticContent.municipality, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     StatusChip("Admin")
                 }
             }
@@ -91,7 +97,7 @@ fun AdminAddZoneScreen(
         ) {
             Spacer(Modifier.height(8.dp))
             Text("Municipalidad", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            Text(FakeData.municipality, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(StaticContent.municipality, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
             Card(
                 shape = RoundedCornerShape(14.dp),
@@ -212,8 +218,12 @@ fun AdminManageZoneScreen(
 // ─────────────────── Admin Reports ────────────────────────────────────────
 
 @Composable
-fun AdminReportsScreen(bottomBar: @Composable () -> Unit) {
-    val report = FakeData.reportSummary
+fun AdminReportsScreen(
+    bottomBar: @Composable () -> Unit,
+    vm: AdminReportsViewModel = viewModel(),
+) {
+    val uiState by vm.state.collectAsState()
+    val report = uiState.report
 
     Scaffold(bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(
@@ -236,7 +246,7 @@ fun AdminReportsScreen(bottomBar: @Composable () -> Unit) {
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text("Date", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                            Text(report.date, color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
+                            Text(report?.date ?: "—", color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -244,14 +254,14 @@ fun AdminReportsScreen(bottomBar: @Composable () -> Unit) {
             item { StatusChip("Hoy") }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard(Icons.Default.LocalParking, "Total sesiones", report.totalSessions.toString(), modifier = Modifier.weight(1f))
-                    StatCard(Icons.Default.CreditCard, "Ingresos", report.revenue, modifier = Modifier.weight(1f))
+                    StatCard(Icons.Default.LocalParking, "Total sesiones", (report?.totalSessions ?: 0).toString(), modifier = Modifier.weight(1f))
+                    StatCard(Icons.Default.CreditCard, "Ingresos", report?.revenue ?: "—", modifier = Modifier.weight(1f))
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard(Icons.Default.Warning, "Multas emitidas", report.finesIssued.toString(), iconTint = PendingRed, modifier = Modifier.weight(1f))
-                    StatCard(Icons.Default.Place, "Espacios activos", report.activeSpots, iconTint = WarningOrange, modifier = Modifier.weight(1f))
+                    StatCard(Icons.Default.Warning, "Multas emitidas", (report?.finesIssued ?: 0).toString(), iconTint = PendingRed, modifier = Modifier.weight(1f))
+                    StatCard(Icons.Default.Place, "Espacios activos", report?.activeSpots ?: "—", iconTint = WarningOrange, modifier = Modifier.weight(1f))
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }
@@ -262,8 +272,12 @@ fun AdminReportsScreen(bottomBar: @Composable () -> Unit) {
 // ─────────────────── Admin Fines ──────────────────────────────────────────
 
 @Composable
-fun AdminFinesScreen(bottomBar: @Composable () -> Unit) {
-    val pendingCount = FakeData.adminFines.count { !it.isPaid }
+fun AdminFinesScreen(
+    bottomBar: @Composable () -> Unit,
+    vm: AdminFinesViewModel = viewModel(),
+) {
+    val uiState by vm.state.collectAsState()
+    val pendingCount = uiState.fines.count { !it.isPaid }
 
     Scaffold(bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(
@@ -276,7 +290,7 @@ fun AdminFinesScreen(bottomBar: @Composable () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 if (pendingCount > 0) ErrorBanner("$pendingCount multas pendientes de cobro")
             }
-            items(FakeData.adminFines) { fine ->
+            items(uiState.fines) { fine ->
                 FineRow(fine = fine)
             }
             item { Spacer(Modifier.height(8.dp)) }
@@ -310,7 +324,7 @@ fun AdminAlertsScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text("Admin Municipal", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("Municipal de ${FakeData.municipality}", color = PrimaryGreen, style = MaterialTheme.typography.bodyMedium)
+                            Text("Municipal de ${StaticContent.municipality}", color = PrimaryGreen, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -318,7 +332,7 @@ fun AdminAlertsScreen(
             item {
                 Text("Notificacón de alertas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
-            items(FakeData.adminAlerts) { alert ->
+            items(StaticContent.adminAlerts) { alert ->
                 AlertCard(alert.source, alert.title, alert.body, alert.time) { onAlertClick(alert.id) }
             }
             item {
@@ -368,7 +382,7 @@ fun AdminAlertDetailScreen(
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
-    val alert = FakeData.adminAlerts.firstOrNull { it.id == alertId } ?: FakeData.adminAlerts.first()
+    val alert = StaticContent.adminAlerts.firstOrNull { it.id == alertId } ?: StaticContent.adminAlerts.first()
 
     Scaffold(topBar = { EparkTopBar("Alerta", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(
