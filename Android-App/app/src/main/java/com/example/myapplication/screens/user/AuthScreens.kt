@@ -9,19 +9,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.ui.auth.LoginViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun LoginScreen(
-    onLoginResident: () -> Unit,
-    onLoginAdmin: () -> Unit,
+    onLoggedIn: (role: String) -> Unit,
     onRegister: () -> Unit,
+    vm: LoginViewModel = viewModel(),
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showRegister by remember { mutableStateOf(false) }
+    val uiState by vm.state.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         BrandHeader()
@@ -48,11 +49,14 @@ fun LoginScreen(
                 TextLink("¿Olvidaste tu contraseña?", onClick = {})
             }
             Spacer(Modifier.height(20.dp))
+            uiState.error?.let { msg ->
+                Text(msg, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(8.dp))
+            }
             PrimaryButton(
-                text = "Continuar",
-                onClick = {
-                    if (email.trim() == FakeData.adminEmail) onLoginAdmin() else onLoginResident()
-                },
+                text = if (uiState.loading) "Ingresando..." else "Continuar",
+                onClick = { vm.login(email, password, onLoggedIn) },
+                enabled = !uiState.loading,
             )
             SecondaryButton(text = "Salir", onClick = {})
             Spacer(Modifier.height(16.dp))

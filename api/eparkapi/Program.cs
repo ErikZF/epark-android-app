@@ -1,41 +1,44 @@
+using eparkapi.Data;
+using eparkapi.Endpoints;
+using eparkapi.Models.Enums;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+const string CorsPolicy = "AllowApp";
+builder.Services.AddCors(options =>
+    options.AddPolicy(CorsPolicy, policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
+var connectionString = builder.Configuration.GetConnectionString("Postgres");
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.MapEnum<SessionStatus>("session_status");
+dataSourceBuilder.MapEnum<PaymentStatus>("payment_status");
+dataSourceBuilder.MapEnum<PaymentReference>("payment_reference");
+dataSourceBuilder.MapEnum<FineStatus>("fine_status");
+var dataSource = dataSourceBuilder.Build();
+
+builder.Services.AddDbContext<EparkDbContext>(options => options.UseNpgsql(dataSource));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(CorsPolicy);
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapAuthEndpoints();
+app.MapZoneEndpoints();
+app.MapVehicleEndpoints();
+app.MapPaymentMethodEndpoints();
+app.MapSessionEndpoints();
+app.MapPaymentEndpoints();
+app.MapFineEndpoints();
+app.MapReportEndpoints();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

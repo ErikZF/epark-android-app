@@ -16,9 +16,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.data.FakeData
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.StaticContent
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
@@ -26,9 +28,11 @@ fun HomeScreen(
     onZoneClick: (ParkingZone) -> Unit,
     onNotificationsClick: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: HomeViewModel = viewModel(),
 ) {
     var search by remember { mutableStateOf("") }
-    val zones = FakeData.zones.filter {
+    val uiState by vm.state.collectAsState()
+    val zones = uiState.zones.filter {
         search.isBlank() || it.name.contains(search, ignoreCase = true)
     }
 
@@ -53,7 +57,7 @@ fun HomeScreen(
                     Column {
                         Text("Municipalidad", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(FakeData.municipality, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            Text(StaticContent.municipality, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                             Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextSecondary)
                         }
                     }
@@ -73,6 +77,16 @@ fun HomeScreen(
             }
             item {
                 Text("Zonas cercanas", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            }
+            if (uiState.loading) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+            uiState.error?.let { msg ->
+                item { Text(msg, color = MaterialTheme.colorScheme.error) }
             }
             items(zones) { zone ->
                 ZoneCard(zone = zone, onClick = { onZoneClick(zone) })
