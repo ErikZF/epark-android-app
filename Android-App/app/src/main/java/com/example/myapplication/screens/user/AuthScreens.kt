@@ -11,6 +11,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.auth.LoginViewModel
+import com.example.myapplication.ui.auth.RegisterViewModel
+import com.example.myapplication.ui.auth.VehicleRegisterViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.theme.*
 
@@ -93,12 +95,14 @@ private fun SocialButton(label: String, modifier: Modifier = Modifier) {
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onLoginClick: () -> Unit,
+    vm: RegisterViewModel = viewModel(),
 ) {
     var name by remember { mutableStateOf("") }
     var cedula by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showSuccess by remember { mutableStateOf(false) }
+    val uiState by vm.state.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -126,7 +130,15 @@ fun RegisterScreen(
                 Spacer(Modifier.height(12.dp))
                 EparkTextField(value = password, onValueChange = { password = it }, placeholder = "Contraseña", isPassword = true)
                 Spacer(Modifier.height(20.dp))
-                PrimaryButton(text = "Crear cuenta", onClick = { showSuccess = true })
+                uiState.error?.let { msg ->
+                    Text(msg, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(8.dp))
+                }
+                PrimaryButton(
+                    text = if (uiState.loading) "Creando cuenta..." else "Crear cuenta",
+                    onClick = { vm.register(name, email, password) { showSuccess = true } },
+                    enabled = !uiState.loading,
+                )
                 SecondaryButton(text = "Salir", onClick = {})
                 Spacer(Modifier.height(24.dp))
             }
@@ -152,12 +164,14 @@ fun RegisterScreen(
 fun VehicleRegisterScreen(
     onRegistered: () -> Unit,
     onExit: () -> Unit,
+    vm: VehicleRegisterViewModel = viewModel(),
 ) {
     var plate by remember { mutableStateOf("") }
     var brand by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
     var showSuccess by remember { mutableStateOf(false) }
+    val uiState by vm.state.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -185,7 +199,15 @@ fun VehicleRegisterScreen(
                 Spacer(Modifier.height(12.dp))
                 EparkTextField(value = year, onValueChange = { year = it }, placeholder = "Año")
                 Spacer(Modifier.height(20.dp))
-                PrimaryButton(text = "Registrar", onClick = { showSuccess = true })
+                uiState.error?.let { msg ->
+                    Text(msg, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(8.dp))
+                }
+                PrimaryButton(
+                    text = if (uiState.loading) "Registrando..." else "Registrar",
+                    onClick = { vm.addVehicle(plate, brand, model, year) { showSuccess = true } },
+                    enabled = !uiState.loading,
+                )
                 SecondaryButton(text = "Salir", onClick = onExit)
                 Spacer(Modifier.height(24.dp))
             }

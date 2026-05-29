@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: epark-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: epark
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: epark
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    volumes:
+      - ./migrations:/migrations:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+
+        psql -v ON_ERROR_STOP=1 -h "$$PGHOST" -U "$$PGUSER" -d "$$PGDATABASE" <<'SQL'
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        SQL
+
+        for migration in /migrations/*.sql; do
+          [ -e "$$migration" ] || continue
+
+          version="$$(basename "$$migration" .sql)"
+          applied="$$(psql -tAc "SELECT 1 FROM schema_migrations WHERE version = '$$version' LIMIT 1" -h "$$PGHOST" -U "$$PGUSER" -d "$$PGDATABASE" | tr -d '[:space:]')"
+
+          if [ "$$applied" = "1" ]; then
+            echo "Skipping $$version"
+            continue
+          fi
+
+          echo "Applying $$version"
+          psql -v ON_ERROR_STOP=1 -h "$$PGHOST" -U "$$PGUSER" -d "$$PGDATABASE" -f "$$migration"
+          psql -v ON_ERROR_STOP=1 -h "$$PGHOST" -U "$$PGUSER" -d "$$PGDATABASE" -c "INSERT INTO schema_migrations (version) VALUES ('$$version');"
+        done
+
+        echo "Migrations complete"
+    restart: "no"
+
+volumes:
+  postgres_data:

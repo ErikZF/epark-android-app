@@ -21,7 +21,14 @@ dataSourceBuilder.MapEnum<PaymentReference>("payment_reference");
 dataSourceBuilder.MapEnum<FineStatus>("fine_status");
 var dataSource = dataSourceBuilder.Build();
 
-builder.Services.AddDbContext<EparkDbContext>(options => options.UseNpgsql(dataSource));
+builder.Services.AddDbContext<EparkDbContext>(options =>
+    options.UseNpgsql(dataSource, npgsql =>
+    {
+        npgsql.MapEnum<SessionStatus>("session_status");
+        npgsql.MapEnum<PaymentStatus>("payment_status");
+        npgsql.MapEnum<PaymentReference>("payment_reference");
+        npgsql.MapEnum<FineStatus>("fine_status");
+    }));
 
 var app = builder.Build();
 

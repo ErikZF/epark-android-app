@@ -1,5 +1,6 @@
 using System.Text;
 using eparkapi.Models.Entities;
+using eparkapi.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace eparkapi.Data;
@@ -21,6 +22,11 @@ public class EparkDbContext(DbContextOptions<EparkDbContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresEnum<SessionStatus>();
+        modelBuilder.HasPostgresEnum<PaymentStatus>();
+        modelBuilder.HasPostgresEnum<PaymentReference>();
+        modelBuilder.HasPostgresEnum<FineStatus>();
+
         modelBuilder.Entity<Role>().ToTable("roles");
         modelBuilder.Entity<Municipality>().ToTable("municipalities");
         modelBuilder.Entity<User>().ToTable("users");

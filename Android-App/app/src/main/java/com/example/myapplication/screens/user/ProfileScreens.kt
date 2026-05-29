@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
+import java.util.Calendar
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
@@ -192,6 +193,7 @@ fun AddVehicleScreen(onBack: () -> Unit, onAdded: () -> Unit, bottomBar: @Compos
     var brand by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         containerColor = AppBackground,
@@ -215,8 +217,24 @@ fun AddVehicleScreen(onBack: () -> Unit, onAdded: () -> Unit, bottomBar: @Compos
             EparkTextField(value = model, onValueChange = { model = it }, placeholder = "Modelo")
             Spacer(Modifier.height(12.dp))
             EparkTextField(value = year, onValueChange = { year = it }, placeholder = "Año")
+            error?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton(text = "Agregar", onClick = onAdded)
+            PrimaryButton(
+                text = "Agregar",
+                onClick = {
+                    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                    val yearInt = year.trim().toIntOrNull()
+                    when {
+                        plate.isBlank() -> error = "La placa es requerida."
+                        yearInt == null || yearInt < 1886 || yearInt > currentYear ->
+                            error = "Año inválido. Debe ser entre 1886 y $currentYear."
+                        else -> { error = null; onAdded() }
+                    }
+                },
+            )
             SecondaryButton(text = "Salir", onClick = onBack)
             Spacer(Modifier.height(24.dp))
         }
@@ -284,6 +302,7 @@ fun AddPaymentScreen(onBack: () -> Unit, onSaved: () -> Unit, bottomBar: @Compos
     var expiry by remember { mutableStateOf("") }
     var cvc by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = { EparkTopBar("Agregar una forma de pago", onBack = onBack) },
@@ -305,9 +324,40 @@ fun AddPaymentScreen(onBack: () -> Unit, onSaved: () -> Unit, bottomBar: @Compos
                 EparkTextField(value = cvc, onValueChange = { cvc = it }, placeholder = "CVC", modifier = Modifier.weight(1f))
             }
             EparkTextField(value = holder, onValueChange = { holder = it }, placeholder = "Nombre del titular")
+            error?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                PrimaryButton(text = "Guardar", onClick = onSaved, modifier = Modifier.width(160.dp))
+                PrimaryButton(
+                    text = "Guardar",
+                    modifier = Modifier.width(160.dp),
+                    onClick = {
+                        val cal = Calendar.getInstance()
+                        val curYear = cal.get(Calendar.YEAR)
+                        val curMonth = cal.get(Calendar.MONTH) + 1
+
+                        val cardDigits = cardNumber.filter { it.isDigit() }
+                        val expiryClean = expiry.replace(" ", "")
+                        val expiryParts = expiryClean.split("/")
+                        val expMonth = expiryParts.getOrNull(0)?.toIntOrNull() ?: 0
+                        val expYear2d = expiryParts.getOrNull(1)?.toIntOrNull() ?: -1
+                        val expYear = if (expYear2d >= 0) 2000 + expYear2d else -1
+                        val cvcDigits = cvc.filter { it.isDigit() }
+
+                        error = when {
+                            cardDigits.length !in 13..19 -> "Número de tarjeta inválido (13–19 dígitos)."
+                            expiryParts.size != 2 || expMonth !in 1..12 || expYear < 0 ->
+                                "Formato de vencimiento inválido (MM/AA)."
+                            expYear < curYear || (expYear == curYear && expMonth < curMonth) ->
+                                "La tarjeta está vencida."
+                            cvcDigits.length !in 3..4 -> "CVC inválido (3–4 dígitos)."
+                            holder.isBlank() -> "Ingresa el nombre del titular."
+                            else -> null
+                        }
+                        if (error == null) onSaved()
+                    },
+                )
             }
             Spacer(Modifier.height(16.dp))
         }

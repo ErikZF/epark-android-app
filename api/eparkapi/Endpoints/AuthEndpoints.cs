@@ -15,6 +15,9 @@ public static class AuthEndpoints
 
         group.MapPost("/register", async (RegisterRequest req, EparkDbContext db) =>
         {
+            if (!IsValidPassword(req.Password))
+                return Results.BadRequest(new { message = "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character." });
+
             if (await db.Users.AnyAsync(u => u.Email == req.Email))
                 return Results.Conflict(new { message = "Email already registered." });
 
@@ -50,21 +53,19 @@ public static class AuthEndpoints
                 await db.SaveChangesAsync();
             }
 
-            return Results.Ok(new AuthResponse(user.Id, user.FullName, user.Email, driverRole.Name));
+            return Results.Ok(new AuthResponse(user.Id, user.FullName, user.Email, driverRole.Name, null));
         });
 
-        // No real auth yet: we look the user up by email and return their role so the
-        // Android app can route driver/admin/inspector flows. Password verification is deferred.
         group.MapPost("/login", async (LoginRequest req, EparkDbContext db) =>
         {
             var user = await db.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email == req.Email && u.IsActive);
 
-            if (user is null)
+            if (user is null || !user.PasswordHash.Equals(HashPassword(req.Password), StringComparison.OrdinalIgnoreCase))
                 return Results.Unauthorized();
 
-            return Results.Ok(new AuthResponse(user.Id, user.FullName, user.Email, user.Role.Name));
+            return Results.Ok(new AuthResponse(user.Id, user.FullName, user.Email, user.Role.Name, user.MunicipalityId));
         });
     }
 
@@ -73,4 +74,11 @@ public static class AuthEndpoints
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
         return Convert.ToHexString(bytes);
     }
+
+    private static bool IsValidPassword(string password) =>
+        password.Length >= 8 &&
+        password.Any(char.IsUpper) &&
+        password.Any(char.IsLower) &&
+        password.Any(char.IsDigit) &&
+        password.Any(c => !char.IsLetterOrDigit(c));
 }

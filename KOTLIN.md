@@ -47,7 +47,7 @@ graph TD
 3. **State Management**: MVVM Pattern. ViewModels will hold UI states in `StateFlow` and handle interactions via one-way `UserIntent` streams.
 4. **Local Data Caching (Offline Mode)**:
    - **Room DB**: Persistently stores registered vehicles, session histories, active zone data, and issued fines.
-   - **Jetpack DataStore**: Saves user preferences, JWT access tokens, current active session identifiers, and user roles (Driver vs. Inspector).
+  - **Jetpack DataStore**: Saves user preferences, JWT access tokens, current active session identifiers, and user roles (Driver vs. Admin).
 5. **Network Layer**: **Retrofit** combined with **OkHttp** for logging/interceptors, and **Kotlinx Serialization** for high-performance JSON mapping to the C# .NET API.
 6. **Asynchronous Engine**: **Kotlin Coroutines** for background queries and **Flows** for observing database changes in real-time (e.g., active timers).
 7. **Persistent Background Tasks**: **WorkManager** to handle countdown clocks, notifications, and auto-extensions, ensuring they trigger even if the system kills the app.
@@ -56,7 +56,7 @@ graph TD
 
 ## 📱 3. Screen-by-Screen Mapping & UI Breakdown
 
-The Justinmind prototype defines **29 unique screens** divided into two roles: **Driver (Normal User)** and **Municipal Inspector (Admin)**. Below is the mapping of each prototype screen to its Kotlin Composable component.
+The Justinmind prototype defines **29 unique screens** divided into two roles: **Driver (Normal User)** and **Municipal Admin**. Below is the mapping of each prototype screen to its Kotlin Composable component.
 
 ### 🚗 A. User Auth & Registration Flow
 
@@ -205,27 +205,27 @@ The Justinmind prototype defines **29 unique screens** divided into two roles: *
 
 ---
 
-### 👮 E. Inspector / Admin Features
+### 👮 E. Admin Features
 
-#### 23. Admin Zonas (Inspector Zones Dashboard)
+#### 23. Admin Zonas (Admin Zones Dashboard)
 - **Snapshot File**: `d626423a-04cf-45bb-b4ae-07280ca290aa.png`
 - **Compose Component**: `AdminZonesScreen`
 - **Design Details**: Map overlay highlighting municipal administrative zones. List of active zones showing slot occupancy ratios (e.g., "Zone Centrica: 85% full"). Includes quick search field for plates.
 - **Interactions**: Selecting a zone shows active vehicles, spot details, and logs. Includes shortcut to add a zone (`admin.agregarZona`). Search searches database for plate registration.
 
-#### 24. Admin Reportes (Inspector / Admin Analytics)
+#### 24. Admin Reportes (Admin Analytics)
 - **Snapshot File**: `42d18d8e-6f5d-41aa-bf3b-7f182907819f.png`
 - **Compose Component**: `AdminReportsScreen`
 - **Design Details**: Visual graphs (bar charts, line graphs) showing collections by day, occupancy curves, and fine distributions. Beautiful glassmorphic summary cards (Total Revenue, Active Fines, Active Spots).
 - **Interactions**: Date range picker dynamically queries collection stats.
 
-#### 25. Admin Multas (Inspector Fine Operations)
+#### 25. Admin Multas (Fine Operations)
 - **Snapshot File**: `767e0479-a760-4ef1-bd16-4eb22e87d279.png`
 - **Compose Component**: `AdminManageFinesScreen`
 - **Design Details**: List of all issued infractions. Includes floating action button "+" to create/issue a new fine.
 - **Interactions**: Opens ticket creation dialog, requiring plate input, photo upload (via camera integration), zone ID, and reason dropdown.
 
-#### 26. Admin Alerta (Inspector Fine Success Confirmation)
+#### 26. Admin Alerta (Fine Success Confirmation)
 - **Snapshot File**: `7f421ace-e30f-464c-9615-c114d32005fb.png`
 - **Compose Component**: `FineSuccessDialog`
 - **Design Details**: Pop-up window displaying ticket confirmation details: "Infraction successfully registered under ticket #XXXX". Includes direct sharing button (print or email).
@@ -271,7 +271,7 @@ The app must remain operational in areas with poor cellular signal (e.g. undergr
 - **Implementation**:
   - When a Driver opens the app, the local **Room DB** serves cached parking histories and vehicle configurations instantly.
   - Active session countdowns will rely on local system-time elapsed calculations rather than polling server APIs constantly.
-  - If an Inspector issues a fine offline, the fine is written to a Room table marked as `pending_sync = true`. A **WorkManager PeriodicWorkRequest** runs in the background to automatically upload offline data to the C# .NET API once network connection is recovered.
+  - If an admin issues a fine offline, the fine is written to a Room table marked as `pending_sync = true`. A **WorkManager PeriodicWorkRequest** runs in the background to automatically upload offline data to the C# .NET API once network connection is recovered.
 
 ---
 
@@ -280,7 +280,7 @@ The app must remain operational in areas with poor cellular signal (e.g. undergr
 To replace the placeholder weather endpoints inside the backend (`api/eparkapi/Program.cs`), the Kotlin app will require the following REST API endpoints:
 
 ### 👤 1. Authentication (`/api/auth`)
-- `POST /api/auth/login`: Authenticate email/password. Returns JWT and user role (`Driver` / `Inspector`).
+- `POST /api/auth/login`: Authenticate email/password. Returns JWT and user role (`Driver` / `Admin`).
 - `POST /api/auth/register`: Create a new driver account.
 - `PUT /api/auth/profile`: Update name, phone, or password.
 
@@ -298,7 +298,7 @@ To replace the placeholder weather endpoints inside the backend (`api/eparkapi/P
 ### 💸 4. Fines / Infractions (`/api/fines`)
 - `GET /api/fines/user`: Lists tickets associated with the driver's registered plates.
 - `POST /api/fines/pay/{id}`: Processes payment for an outstanding ticket.
-- `POST /api/fines/issue` *(Admin/Inspector only)*: Creates an infraction ticket (parameters: plate, location, photo, violation reason).
+- `POST /api/fines/issue` *(Admin only)*: Creates an infraction ticket (parameters: plate, location, photo, violation reason).
 
 ### 📍 5. Zones (`/api/zones`)
 - `GET /api/zones`: Fetches parking zones inside the city, coordinates, limits, and pricing.
@@ -339,8 +339,8 @@ To manage project progress, we have organized the implementation of the E-Park a
 - [ ] Program credit card tokenization visual interface (`AddCardScreen`).
 - [ ] Build `UserFinesScreen` (unpaid fines count alert) and fine payment wizard (`PayFineScreen`).
 
-### Phase 5: Municipal Inspector Dashboard & Analytics (Screens 23-29)
-- [ ] Implement the inspector portal `AdminZonesScreen` including search tools for active parked plates.
+### Phase 5: Municipal Admin Dashboard & Analytics (Screens 23-29)
+- [ ] Implement the admin portal `AdminZonesScreen` including search tools for active parked plates.
 - [ ] Create graphical collection/occupancy charts in `AdminReportsScreen`.
 - [ ] Build administrative fine tool: `AdminManageFinesScreen` with camera integration for ticket evidence, and success popup `FineSuccessDialog`.
 - [ ] Develop zone management screens: `AddZoneScreen` and `ManageZoneScreen`.
