@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
+import com.example.myapplication.data.repository.AuthState
+import com.example.myapplication.ui.admin.AdminAddZoneViewModel
 import com.example.myapplication.ui.admin.AdminFinesViewModel
 import com.example.myapplication.ui.admin.AdminReportsViewModel
 import com.example.myapplication.ui.admin.AdminZonesViewModel
@@ -84,12 +86,20 @@ fun AdminAddZoneScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: AdminAddZoneViewModel = viewModel(),
 ) {
-    var name by remember { mutableStateOf("Zona Norte") }
-    var spaces by remember { mutableStateOf("10") }
-    var rate by remember { mutableStateOf("1200") }
-    var hoursFrom by remember { mutableStateOf("10:00 am") }
-    var hoursTo by remember { mutableStateOf("23:00 pm") }
+    var name by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var spaces by remember { mutableStateOf("") }
+    var rate by remember { mutableStateOf("") }
+    var latitude by remember { mutableStateOf("") }
+    var longitude by remember { mutableStateOf("") }
+
+    val uiState by vm.state.collectAsState()
+
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) onSaved()
+    }
 
     Scaffold(topBar = { EparkTopBar("Agregar zona", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         Column(
@@ -108,32 +118,35 @@ fun AdminAddZoneScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Nueva zona", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     LabeledField("Nombre", name) { name = it }
-                    LabeledField("Espacios", spaces) { spaces = it }
-                    LabeledField("Tarifa/hr", rate) { rate = it }
+                    LabeledField("Descripción (opcional)", description) { description = it }
+                    LabeledField("Espacios totales", spaces) { spaces = it }
+                    LabeledField("Tarifa/hr (₡)", rate) { rate = it }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Horario Desde", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            Spacer(Modifier.height(4.dp))
-                            EparkTextField(hoursFrom, { hoursFrom = it }, "10:00 am")
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text("Horario Hasta", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            Spacer(Modifier.height(4.dp))
-                            EparkTextField(hoursTo, { hoursTo = it }, "23:00 pm")
-                        }
+                        LabeledField("Latitud", latitude, Modifier.weight(1f)) { latitude = it }
+                        LabeledField("Longitud", longitude, Modifier.weight(1f)) { longitude = it }
                     }
                 }
             }
+            if (uiState.error != null) {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(uiState.error!!)
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton("Guardar zona", onClick = onSaved)
+            PrimaryButton(
+                text = if (uiState.loading) "Guardando..." else "Guardar zona",
+                enabled = !uiState.loading,
+                onClick = {
+                    vm.save(AuthState.municipalityId, name.trim(), description.trim(), spaces, rate, latitude, longitude)
+                },
+            )
             Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun LabeledField(label: String, value: String, onValueChange: (String) -> Unit) {
-    Column {
+private fun LabeledField(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+    Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         EparkTextField(value = value, onValueChange = onValueChange, placeholder = label)

@@ -289,7 +289,11 @@ fun EparkNavHost(navController: NavHostController) {
             LaunchedEffect(Unit) { adminTab = AdminTab.ZONES }
             AdminAddZoneScreen(
                 onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onSaved = {
+                    navController.navigate(Routes.ADMIN_ZONES) {
+                        popUpTo(Routes.ADMIN_ZONES) { inclusive = true }
+                    }
+                },
                 bottomBar = adminBottomBar,
             )
         }

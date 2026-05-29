@@ -9,8 +9,7 @@
 -- ─────────────────────────────────────────────
 INSERT INTO roles (name) VALUES
     ('admin'),
-    ('driver'),
-    ('inspector');
+    ('driver');
 
 -- ─────────────────────────────────────────────
 -- Vehicle types
@@ -34,9 +33,10 @@ INSERT INTO municipalities (name, country) VALUES
 -- Default admin user
 -- password: Admin1234! (bcrypt hash – replace in production)
 -- ─────────────────────────────────────────────
-INSERT INTO users (role_id, full_name, email, password_hash, phone) VALUES
+INSERT INTO users (role_id, municipality_id, full_name, email, password_hash, phone) VALUES
     (
         (SELECT id FROM roles WHERE name = 'admin'),
+        (SELECT id FROM municipalities WHERE name = 'Cartago'),
         'E-Park Admin',
         'admin@epark.cr',
         '$2a$12$placeholder_hash_replace_in_prod',

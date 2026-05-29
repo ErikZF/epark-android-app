@@ -13,15 +13,17 @@ object AuthState {
         private set
     var role: String = ""
         private set
+    var municipalityId: Int = 0
+        private set
 
     val isAdmin: Boolean get() = role == "admin"
-    val isInspector: Boolean get() = role == "inspector"
 
     fun set(auth: AuthResponseDto) {
         userId = auth.userId
         fullName = auth.fullName
         email = auth.email
         role = auth.role
+        municipalityId = auth.municipalityId ?: 0
     }
 
     fun clear() {
@@ -29,5 +31,6 @@ object AuthState {
         fullName = ""
         email = ""
         role = ""
+        municipalityId = 0
     }
 }

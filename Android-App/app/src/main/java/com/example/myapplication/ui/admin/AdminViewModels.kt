@@ -65,6 +65,57 @@ class AdminReportsViewModel(
     }
 }
 
+data class AdminAddZoneUiState(
+    val loading: Boolean = false,
+    val error: String? = null,
+    val success: Boolean = false,
+)
+
+class AdminAddZoneViewModel(
+    private val repo: ZoneRepository = ZoneRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(AdminAddZoneUiState())
+    val state: StateFlow<AdminAddZoneUiState> = _state.asStateFlow()
+
+    fun save(
+        municipalityId: Int,
+        name: String,
+        description: String,
+        spacesStr: String,
+        rateStr: String,
+        latStr: String,
+        lonStr: String,
+    ) {
+        val spots = spacesStr.trim().toIntOrNull()
+        val hrRate = rateStr.trim().toDoubleOrNull()
+        val lat = latStr.trim().toDoubleOrNull()
+        val lon = lonStr.trim().toDoubleOrNull()
+
+        val error = when {
+            name.isBlank() -> "El nombre es requerido."
+            spots == null || spots <= 0 -> "Los espacios deben ser un número mayor a 0."
+            hrRate == null || hrRate <= 0 -> "La tarifa debe ser un valor mayor a 0."
+            lat == null || lat < -90.0 || lat > 90.0 -> "Latitud inválida (debe estar entre -90 y 90)."
+            lon == null || lon < -180.0 || lon > 180.0 -> "Longitud inválida (debe estar entre -180 y 180)."
+            else -> null
+        }
+        if (error != null) {
+            _state.value = AdminAddZoneUiState(error = error)
+            return
+        }
+
+        _state.value = AdminAddZoneUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                repo.addZone(municipalityId, name, description.takeIf { it.isNotBlank() }, lat!!, lon!!, spots!!, hrRate!!)
+                _state.value = AdminAddZoneUiState(success = true)
+            } catch (e: Exception) {
+                _state.value = AdminAddZoneUiState(error = "No se pudo crear la zona.")
+            }
+        }
+    }
+}
+
 data class AdminFinesUiState(
     val loading: Boolean = true,
     val fines: List<Fine> = emptyList(),

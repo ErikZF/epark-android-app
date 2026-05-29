@@ -11,6 +11,7 @@ import com.example.myapplication.data.remote.CreateFineRequestDto
 import com.example.myapplication.data.remote.CreatePaymentRequestDto
 import com.example.myapplication.data.remote.CreateSessionRequestDto
 import com.example.myapplication.data.remote.CreateVehicleRequestDto
+import com.example.myapplication.data.remote.CreateZoneRequestDto
 import com.example.myapplication.data.remote.EparkApi
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
 import com.example.myapplication.data.remote.LoginRequestDto
@@ -42,6 +43,26 @@ class AuthRepository {
 
 class ZoneRepository {
     suspend fun getZones(): List<ParkingZone> = api.getZones().map { it.toDomain() }
+
+    suspend fun addZone(
+        municipalityId: Int,
+        name: String,
+        description: String?,
+        latitude: Double,
+        longitude: Double,
+        totalSpots: Int,
+        hourlyRate: Double,
+    ) = api.createZone(
+        CreateZoneRequestDto(
+            municipalityId,
+            name,
+            description,
+            latitude,
+            longitude,
+            totalSpots,
+            hourlyRate
+        )
+    )
 }
 
 class VehicleRepository {

@@ -22,6 +22,7 @@ data class AuthResponseDto(
     val fullName: String,
     val email: String,
     val role: String,
+    val municipalityId: Int?,
 )
 
 // ── Zones ────────────────────────────────────────────

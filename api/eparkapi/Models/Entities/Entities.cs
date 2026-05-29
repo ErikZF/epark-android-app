@@ -20,6 +20,7 @@ public class User
 {
     public int Id { get; set; }
     public short RoleId { get; set; }
+    public int? MunicipalityId { get; set; }
     public string FullName { get; set; } = null!;
     public string Email { get; set; } = null!;
     public string PasswordHash { get; set; } = null!;
@@ -30,6 +31,7 @@ public class User
     public DateTime UpdatedAt { get; set; }
 
     public Role Role { get; set; } = null!;
+    public Municipality? Municipality { get; set; }
 }
 
 public class Zone

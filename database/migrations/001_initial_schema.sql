@@ -8,7 +8,7 @@
 -- ─────────────────────────────────────────────
 CREATE TABLE roles (
     id   SMALLSERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE   -- 'admin', 'driver', 'inspector'
+    name VARCHAR(50) NOT NULL UNIQUE   -- 'admin', 'driver'
 );
 
 -- ─────────────────────────────────────────────
@@ -25,16 +25,17 @@ CREATE TABLE municipalities (
 -- 3. USERS
 -- ─────────────────────────────────────────────
 CREATE TABLE users (
-    id            SERIAL       PRIMARY KEY,
-    role_id       SMALLINT     NOT NULL REFERENCES roles(id),
-    full_name     VARCHAR(200) NOT NULL,
-    email         VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    phone         VARCHAR(20),
-    avatar_url    TEXT,
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    id               SERIAL       PRIMARY KEY,
+    role_id          SMALLINT     NOT NULL REFERENCES roles(id),
+    municipality_id  INT          REFERENCES municipalities(id),  -- required for admin, null for driver
+    full_name        VARCHAR(200) NOT NULL,
+    email            VARCHAR(255) NOT NULL UNIQUE,
+    password_hash    VARCHAR(255) NOT NULL,
+    phone            VARCHAR(20),
+    avatar_url       TEXT,
+    is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_users_email   ON users(email);
@@ -192,7 +193,7 @@ CREATE TYPE fine_status AS ENUM ('unpaid', 'paid', 'contested', 'dismissed');
 
 CREATE TABLE fines (
     id          SERIAL         PRIMARY KEY,
-    issued_by   INT            NOT NULL REFERENCES users(id),   -- inspector
+    issued_by   INT            NOT NULL REFERENCES users(id),   -- issuer
     vehicle_id  INT            NOT NULL REFERENCES vehicles(id),
     zone_id     INT            NOT NULL REFERENCES zones(id),
     reason      VARCHAR(255)   NOT NULL,
