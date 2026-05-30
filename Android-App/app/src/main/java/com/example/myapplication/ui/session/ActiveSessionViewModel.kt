@@ -1,0 +1,147 @@
+package com.example.myapplication.ui.session
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.ActiveSession
+import com.example.myapplication.data.repository.SessionRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.TimeZone
+
+data class ActiveSessionUiState(
+    val loading: Boolean = true,
+    val session: ActiveSession? = null,
+    val elapsedSeconds: Long = 0L,
+    val currentCostColones: Long = 0L,
+    val nearingEnd: Boolean = false,
+    val finalizing: Boolean = false,
+    val extending: Boolean = false,
+    val error: String? = null,
+)
+
+class ActiveSessionViewModel(
+    private val repo: SessionRepository = SessionRepository(),
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(ActiveSessionUiState())
+    val state: StateFlow<ActiveSessionUiState> = _state.asStateFlow()
+
+    private var tickerJob: Job? = null
+
+    init { loadActiveSession() }
+
+    fun loadActiveSession() {
+        tickerJob?.cancel()
+        _state.value = ActiveSessionUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                val session = repo.getActiveSession()
+                if (session == null) {
+                    _state.value = ActiveSessionUiState(loading = false, error = "No hay sesión activa.")
+                } else {
+                    _state.value = ActiveSessionUiState(loading = false, session = session)
+                    startTicker(session)
+                }
+            } catch (e: Exception) {
+                _state.value = ActiveSessionUiState(loading = false, error = "No se pudo cargar la sesión.")
+            }
+        }
+    }
+
+    private fun startTicker(session: ActiveSession) {
+        tickerJob = viewModelScope.launch {
+            while (true) {
+                val nowMs = System.currentTimeMillis()
+                val elapsed = ((nowMs - session.scheduledStartMs) / 1000L).coerceAtLeast(0L)
+                val scheduledSeconds = (session.scheduledEndMs - session.scheduledStartMs) / 1000L
+                val remainingSeconds = (scheduledSeconds - elapsed).coerceAtLeast(0L)
+
+                val costColones = (session.hourlyRate * elapsed / 3600.0).toLong()
+                val nearingEnd = remainingSeconds in 1..600 // within 10 minutes
+
+                _state.value = _state.value.copy(
+                    elapsedSeconds = elapsed,
+                    currentCostColones = costColones,
+                    nearingEnd = nearingEnd,
+                )
+                delay(1_000)
+            }
+        }
+    }
+
+    /**
+     * Extends the session by [addedMinutes] (clamped server-side to zone close time).
+     * Refreshes session data from the API on success.
+     */
+    fun extend(addedMinutes: Int, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        val session = _state.value.session ?: return
+        _state.value = _state.value.copy(extending = true, error = null)
+        viewModelScope.launch {
+            try {
+                repo.extend(session.id, addedMinutes)
+                loadActiveSession()
+                onSuccess()
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(extending = false, error = "No se pudo extender la sesión.")
+                onError("No se pudo extender la sesión.")
+            }
+        }
+    }
+
+    /**
+     * Finalizes the session and calls [onSuccess] with (sessionId, totalCost, elapsedFormatted).
+     */
+    fun finalize(onSuccess: (sessionId: Int, totalCost: Double, duration: String) -> Unit) {
+        val session = _state.value.session ?: return
+        _state.value = _state.value.copy(finalizing = true, error = null)
+        viewModelScope.launch {
+            try {
+                val result = repo.finalize(session.id)
+                tickerJob?.cancel()
+                val elapsed = _state.value.elapsedSeconds
+                onSuccess(result.id, result.totalCost.toDouble(), formatElapsed(elapsed))
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(finalizing = false, error = "No se pudo finalizar la sesión.")
+            }
+        }
+    }
+
+    /** Maximum minutes the user can add before the zone closes. */
+    fun maxExtensionMinutes(): Int {
+        val session = _state.value.session ?: return 0
+        val remaining = ((session.scheduledEndMs - System.currentTimeMillis()) / 60_000L).toInt()
+        val zoneCloseMs = zoneCloseMs(session.scheduledEndMs, session.zoneCloseHour)
+        return ((zoneCloseMs - session.scheduledEndMs) / 60_000L).toInt().coerceAtLeast(0)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        tickerJob?.cancel()
+    }
+
+    companion object {
+        fun formatElapsed(seconds: Long): String {
+            val h = seconds / 3600
+            val m = (seconds % 3600) / 60
+            val s = seconds % 60
+            return "%d:%02d:%02d".format(h, m, s)
+        }
+
+        /** Returns the UTC ms of [closeHour] (local Costa Rica time) on the local day of [referenceMs]. */
+        fun zoneCloseMs(referenceMs: Long, closeHour: Int): Long {
+            val tz = TimeZone.getTimeZone("America/Costa_Rica")
+            val cal = Calendar.getInstance(tz)
+            cal.timeInMillis = referenceMs
+            cal.set(Calendar.HOUR_OF_DAY, closeHour)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            return cal.timeInMillis
+        }
+    }
+}

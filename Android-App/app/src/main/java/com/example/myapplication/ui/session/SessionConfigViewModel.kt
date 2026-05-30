@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -45,8 +46,9 @@ class SessionConfigViewModel(
     }
 
     /**
-     * Validates the entered space and creates an active session for [zone].
-     * Invokes [onSuccess] only when the backend accepts the session.
+     * Validates the entered space and starts a session for [zone].
+     * The session runs until the zone's closing time today (UTC).
+     * Invokes [onSuccess] on the calling screen to navigate to the active session view.
      */
     fun startSession(zone: ParkingZone, spaceText: String, onSuccess: () -> Unit) {
         val vehicle = _state.value.currentVehicle
@@ -75,6 +77,14 @@ class SessionConfigViewModel(
             return
         }
 
+        // Zone hours are in local (Costa Rica) time — compare with local time
+        val nowLocal = Calendar.getInstance(TimeZone.getTimeZone("America/Costa_Rica"))
+        val currentHour = nowLocal.get(Calendar.HOUR_OF_DAY)
+        if (currentHour < zone.openHour || currentHour >= zone.closeHour) {
+            _state.value = _state.value.copy(error = "La zona está cerrada en este horario.")
+            return
+        }
+
         _state.value = _state.value.copy(submitting = true, error = null)
         viewModelScope.launch {
             try {
@@ -82,17 +92,17 @@ class SessionConfigViewModel(
                 sessionRepo.startSession(
                     vehicleId = vehicle.id,
                     zoneId = zoneId,
-                    spaceNumber = space,
+                    spaceNumber = space!!,
                     startIso = isoUtc(now),
-                    endIso = isoUtc(Date(now.time + DEFAULT_DURATION_MS)),
                 )
                 _state.value = _state.value.copy(submitting = false, error = null)
                 onSuccess()
             } catch (e: HttpException) {
-                val message = if (e.code() == 409)
-                    "Ese espacio ya está ocupado. Elige otro."
-                else
-                    "No se pudo iniciar la sesión."
+                val message = when (e.code()) {
+                    409 -> "Ese espacio ya está ocupado. Elige otro."
+                    400 -> "La zona ya cerró por hoy o el espacio es inválido."
+                    else -> "No se pudo iniciar la sesión."
+                }
                 _state.value = _state.value.copy(submitting = false, error = message)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(submitting = false, error = "No se pudo iniciar la sesión.")
@@ -103,8 +113,6 @@ class SessionConfigViewModel(
     private fun isoUtc(date: Date): String = isoFormat.format(date)
 
     private companion object {
-        const val DEFAULT_DURATION_MS = 60L * 60L * 1000L // 1 hour default block
-
         val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }

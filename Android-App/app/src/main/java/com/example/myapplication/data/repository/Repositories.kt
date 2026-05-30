@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.ActiveSession
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingSession
@@ -14,6 +15,7 @@ import com.example.myapplication.data.remote.CreateVehicleRequestDto
 import com.example.myapplication.data.remote.CreateZoneRequestDto
 import com.example.myapplication.data.remote.EparkApi
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
+import com.example.myapplication.data.remote.FinalizeSessionResponseDto
 import com.example.myapplication.data.remote.LoginRequestDto
 import com.example.myapplication.data.remote.RegisterRequestDto
 
@@ -86,17 +88,27 @@ class SessionRepository {
     suspend fun getHistory(userId: Int = AuthState.userId): List<ParkingSession> =
         api.getSessions(userId).map { it.toDomain() }
 
-    suspend fun startSession(vehicleId: Int, zoneId: Int, spaceNumber: Int, startIso: String, endIso: String) {
-        api.createSession(
-            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso, endIso)
+    /** Creates a session and returns the new session ID. */
+    suspend fun startSession(vehicleId: Int, zoneId: Int, spaceNumber: Int, startIso: String): Int {
+        val response = api.createSession(
+            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso, startIso)
         )
+        return response.id
     }
 
-    suspend fun extend(sessionId: Int, addedMinutes: Int) {
+    /** Returns the active session, or null if none exists (API returns 204). */
+    suspend fun getActiveSession(userId: Int = AuthState.userId): ActiveSession? {
+        val response = api.getActiveSession(userId)
+        return if (response.isSuccessful) response.body()?.toActiveSession() else null
+    }
+
+    /** Extends a session. Returns the new scheduledEnd as ISO string and added minutes. */
+    suspend fun extend(sessionId: Int, addedMinutes: Int) =
         api.extendSession(sessionId, ExtendSessionRequestDto(addedMinutes))
-    }
 
-    suspend fun finalize(sessionId: Int) = api.finalizeSession(sessionId)
+    /** Finalizes a session and returns the calculated total cost and session ID. */
+    suspend fun finalize(sessionId: Int): FinalizeSessionResponseDto =
+        api.finalizeSession(sessionId)
 }
 
 class PaymentRepository {

@@ -28,6 +28,8 @@ public record ZoneResponse(
     int TotalSpots,
     int FreeSpots,
     decimal HourlyRate,
+    int OpenHour,
+    int CloseHour,
     bool IsActive);
 
 public record CreateZoneRequest(
@@ -37,13 +39,17 @@ public record CreateZoneRequest(
     decimal Latitude,
     decimal Longitude,
     int TotalSpots,
-    decimal HourlyRate);
+    decimal HourlyRate,
+    int OpenHour = 6,
+    int CloseHour = 22);
 
 public record UpdateZoneRequest(
     string Name,
     string? Description,
     int TotalSpots,
     decimal HourlyRate,
+    int OpenHour,
+    int CloseHour,
     bool IsActive);
 
 // ── Vehicles ─────────────────────────────────────────
@@ -109,7 +115,11 @@ public record SessionResponse(
     DateTime? ActualEnd,
     decimal HourlyRate,
     decimal TotalCost,
-    string Status);
+    string Status,
+    int ZoneOpenHour,
+    int ZoneCloseHour);
+
+public record FinalizeSessionResponse(int Id, string Status, decimal TotalCost);
 
 // ── Payments ─────────────────────────────────────────
 public record CreatePaymentRequest(

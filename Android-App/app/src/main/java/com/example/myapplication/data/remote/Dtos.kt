@@ -37,6 +37,8 @@ data class ZoneDto(
     val totalSpots: Int,
     val freeSpots: Int,
     val hourlyRate: Double,
+    val openHour: Int = 6,
+    val closeHour: Int = 22,
     val isActive: Boolean,
 )
 
@@ -48,6 +50,8 @@ data class CreateZoneRequestDto(
     val longitude: Double,
     val totalSpots: Int,
     val hourlyRate: Double,
+    val openHour: Int = 6,
+    val closeHour: Int = 22,
 )
 
 data class UpdateZoneRequestDto(
@@ -55,6 +59,8 @@ data class UpdateZoneRequestDto(
     val description: String?,
     val totalSpots: Int,
     val hourlyRate: Double,
+    val openHour: Int,
+    val closeHour: Int,
     val isActive: Boolean,
 )
 
@@ -112,7 +118,19 @@ data class CreateSessionRequestDto(
     val scheduledEnd: String,
 )
 
+data class CreateSessionResponseDto(val id: Int, val totalCost: Double)
+
 data class ExtendSessionRequestDto(val addedMinutes: Int)
+
+data class ExtendSessionResponseDto(
+    val id: Int,
+    val scheduledEnd: String,
+    val totalCost: Double,
+    val additionalCost: Double,
+    val addedMinutes: Int,
+)
+
+data class FinalizeSessionResponseDto(val id: Int, val status: String, val totalCost: Double)
 
 data class SessionDto(
     val id: Int,
@@ -127,6 +145,8 @@ data class SessionDto(
     val hourlyRate: Double,
     val totalCost: Double,
     val status: String,
+    val zoneOpenHour: Int = 6,
+    val zoneCloseHour: Int = 22,
 )
 
 // ── Payments ─────────────────────────────────────────

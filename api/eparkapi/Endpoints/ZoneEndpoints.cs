@@ -55,7 +55,9 @@ public static class ZoneEndpoints
                 Latitude = req.Latitude,
                 Longitude = req.Longitude,
                 TotalSpots = req.TotalSpots,
-                HourlyRate = req.HourlyRate
+                HourlyRate = req.HourlyRate,
+                OpenHour = req.OpenHour,
+                CloseHour = req.CloseHour,
             };
             db.Zones.Add(zone);
             await db.SaveChangesAsync();
@@ -71,6 +73,8 @@ public static class ZoneEndpoints
             zone.Description = req.Description;
             zone.TotalSpots = req.TotalSpots;
             zone.HourlyRate = req.HourlyRate;
+            zone.OpenHour = req.OpenHour;
+            zone.CloseHour = req.CloseHour;
             zone.IsActive = req.IsActive;
             await db.SaveChangesAsync();
             return Results.NoContent();
@@ -89,5 +93,7 @@ public static class ZoneEndpoints
             z.TotalSpots,
             Math.Max(0, z.TotalSpots - activeSessions),
             z.HourlyRate,
+            z.OpenHour,
+            z.CloseHour,
             z.IsActive);
 }

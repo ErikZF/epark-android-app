@@ -1,5 +1,6 @@
 package com.example.myapplication.data.remote
 
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -45,19 +46,20 @@ interface EparkApi {
 
     // ── Sessions ──
     @POST("api/sessions")
-    suspend fun createSession(@Body body: CreateSessionRequestDto)
+    suspend fun createSession(@Body body: CreateSessionRequestDto): CreateSessionResponseDto
 
     @GET("api/users/{userId}/sessions")
     suspend fun getSessions(@Path("userId") userId: Int): List<SessionDto>
 
+    // Returns 200 with session or 204 No Content when none active
     @GET("api/users/{userId}/sessions/active")
-    suspend fun getActiveSession(@Path("userId") userId: Int): SessionDto
+    suspend fun getActiveSession(@Path("userId") userId: Int): Response<SessionDto>
 
     @POST("api/sessions/{id}/extend")
-    suspend fun extendSession(@Path("id") id: Int, @Body body: ExtendSessionRequestDto)
+    suspend fun extendSession(@Path("id") id: Int, @Body body: ExtendSessionRequestDto): ExtendSessionResponseDto
 
     @POST("api/sessions/{id}/finalize")
-    suspend fun finalizeSession(@Path("id") id: Int)
+    suspend fun finalizeSession(@Path("id") id: Int): FinalizeSessionResponseDto
 
     // ── Payments ──
     @POST("api/payments")

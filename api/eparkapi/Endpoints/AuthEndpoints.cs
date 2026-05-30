@@ -30,7 +30,7 @@ public static class AuthEndpoints
                 RoleId = driverRole.Id,
                 FullName = req.FullName,
                 Email = req.Email,
-                PasswordHash = HashPassword(req.Password),
+                PasswordHash = req.Password,
                 Phone = req.Phone
             };
             db.Users.Add(user);
@@ -62,7 +62,7 @@ public static class AuthEndpoints
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email == req.Email && u.IsActive);
 
-            if (user is null || !user.PasswordHash.Equals(HashPassword(req.Password), StringComparison.OrdinalIgnoreCase))
+            if (user is null || !user.PasswordHash.Equals(req.Password, StringComparison.Ordinal))
                 return Results.Unauthorized();
 
             return Results.Ok(new AuthResponse(user.Id, user.FullName, user.Email, user.Role.Name, user.MunicipalityId));

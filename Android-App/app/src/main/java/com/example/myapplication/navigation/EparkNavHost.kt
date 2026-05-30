@@ -1,6 +1,7 @@
 package com.example.myapplication.navigation
 
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -10,11 +11,21 @@ import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.session.ActiveSessionViewModel
 
 @Composable
 fun EparkNavHost(navController: NavHostController) {
     // Shared mutable state across the nav graph
     var selectedZone by remember { mutableStateOf<ParkingZone?>(null) }
+
+    // Finalized session data passed from ActiveSession → Payment → PaymentSuccess
+    var finalizedSessionId by remember { mutableStateOf(-1) }
+    var finalizedCost by remember { mutableStateOf(0.0) }
+    var finalizedDuration by remember { mutableStateOf("") }
+    var finalizedZoneName by remember { mutableStateOf("") }
+
+    // Shared ViewModel so ActiveSession and ExtendSession interact with the same state
+    val activeSessionVm: ActiveSessionViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -145,18 +156,50 @@ fun EparkNavHost(navController: NavHostController) {
             val zone = selectedZone ?: StaticContent.placeholderZone
             SessionConfigScreen(
                 zone = zone,
-                onStartParking = { navController.navigate(Routes.PAYMENT) },
+                onStartParking = {
+                    // After session is created, reload it and go to the active session screen
+                    activeSessionVm.loadActiveSession()
+                    navController.navigate(Routes.ACTIVE_SESSION) {
+                        popUpTo(Routes.SESSION_CONFIG) { inclusive = true }
+                    }
+                },
                 onSelectOtherVehicle = {},
                 onBack = { navController.popBackStack() },
                 bottomBar = residentBottomBar,
             )
         }
 
+        composable(Routes.ACTIVE_SESSION) {
+            LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            ActiveSessionScreen(
+                onFinalized = { sessionId, cost, duration ->
+                    finalizedSessionId = sessionId
+                    finalizedCost = cost
+                    finalizedDuration = duration
+                    finalizedZoneName = activeSessionVm.state.value.session?.zoneName ?: ""
+                    navController.navigate(Routes.PAYMENT)
+                },
+                onExtend = { navController.navigate(Routes.EXTEND_SESSION) },
+                bottomBar = residentBottomBar,
+                vm = activeSessionVm,
+            )
+        }
+
+        composable(Routes.EXTEND_SESSION) {
+            LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            ExtendSessionScreen(
+                onBack = { navController.popBackStack() },
+                bottomBar = residentBottomBar,
+                vm = activeSessionVm,
+            )
+        }
+
         composable(Routes.PAYMENT) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            val zone = selectedZone ?: StaticContent.placeholderZone
             PaymentScreen(
-                zone = zone,
+                sessionId = finalizedSessionId,
+                totalCost = finalizedCost,
+                duration = finalizedDuration,
                 onConfirm = { navController.navigate(Routes.PAYMENT_SUCCESS) },
                 onBack = { navController.popBackStack() },
                 bottomBar = residentBottomBar,
@@ -166,29 +209,14 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.PAYMENT_SUCCESS) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
             PaymentSuccessScreen(
+                totalCost = finalizedCost,
+                duration = finalizedDuration,
+                zoneName = finalizedZoneName,
                 onNewSession = {
                     navController.navigate(Routes.USER_HOME) {
                         popUpTo(Routes.USER_HOME) { inclusive = true }
                     }
                 },
-                bottomBar = residentBottomBar,
-            )
-        }
-
-        composable(Routes.ACTIVE_SESSION) {
-            LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            ActiveSessionScreen(
-                onFinalize = { navController.navigate(Routes.PAYMENT) },
-                onExtend = { navController.navigate(Routes.EXTEND_SESSION) },
-                bottomBar = residentBottomBar,
-            )
-        }
-
-        composable(Routes.EXTEND_SESSION) {
-            LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            ExtendSessionScreen(
-                onAccept = { navController.popBackStack() },
-                onBack = { navController.popBackStack() },
                 bottomBar = residentBottomBar,
             )
         }
