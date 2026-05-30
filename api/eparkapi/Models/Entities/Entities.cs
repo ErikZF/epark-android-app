@@ -92,6 +92,7 @@ public class Session
     public int UserId { get; set; }
     public int VehicleId { get; set; }
     public int ZoneId { get; set; }
+    public int SpaceNumber { get; set; }
     public DateTime ScheduledStart { get; set; }
     public DateTime ScheduledEnd { get; set; }
     public DateTime? ActualEnd { get; set; }

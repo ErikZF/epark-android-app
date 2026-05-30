@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,7 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,7 +37,7 @@ fun SessionConfigScreen(
     bottomBar: @Composable () -> Unit,
     vm: SessionConfigViewModel = viewModel(),
 ) {
-    var spaceDigits by remember { mutableStateOf(listOf("", "", "", "")) }
+    var space by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
     val currentVehicle = uiState.currentVehicle
 
@@ -78,23 +82,43 @@ fun SessionConfigScreen(
             }
             Spacer(Modifier.height(16.dp))
 
-            Text("Número de espacio (4 dígitos)", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Text("Número de espacio (máx. 4 dígitos)", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                repeat(4) { i ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(70.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceWhite)
-                            .border(1.5.dp, BorderColor, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(spaceDigits[i], style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            BasicTextField(
+                value = space,
+                onValueChange = { input ->
+                    if (input.length <= 4 && input.all { it.isDigit() }) space = input
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                cursorBrush = SolidColor(PrimaryGreen),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { _ ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(4) { i ->
+                            val focused = i == space.length.coerceAtMost(3)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(70.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SurfaceWhite)
+                                    .border(
+                                        1.5.dp,
+                                        if (focused) PrimaryGreen else BorderColor,
+                                        RoundedCornerShape(12.dp),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    space.getOrNull(i)?.toString() ?: "",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
-                }
-            }
+                },
+            )
             Spacer(Modifier.height(16.dp))
 
             Card(
@@ -123,8 +147,16 @@ fun SessionConfigScreen(
                     }
                 }
             }
+            uiState.error?.let { msg ->
+                Spacer(Modifier.height(12.dp))
+                Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton(text = "Iniciar parqueo", onClick = onStartParking)
+            PrimaryButton(
+                text = if (uiState.submitting) "Iniciando..." else "Iniciar parqueo",
+                onClick = { vm.startSession(zone, space, onStartParking) },
+                enabled = !uiState.submitting,
+            )
             Spacer(Modifier.height(16.dp))
         }
     }

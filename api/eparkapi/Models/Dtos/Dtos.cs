@@ -91,6 +91,7 @@ public record CreateSessionRequest(
     int UserId,
     int VehicleId,
     int ZoneId,
+    int SpaceNumber,
     DateTime ScheduledStart,
     DateTime ScheduledEnd);
 
@@ -102,6 +103,7 @@ public record SessionResponse(
     string ZoneName,
     int VehicleId,
     string Plate,
+    int SpaceNumber,
     DateTime ScheduledStart,
     DateTime ScheduledEnd,
     DateTime? ActualEnd,

@@ -11,9 +11,15 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val loading: Boolean = false,
-    val zones: List<ParkingZone> = emptyList(),
+    val allZones: List<ParkingZone> = emptyList(),
+    val municipalities: List<String> = emptyList(),
+    val selectedMunicipality: String? = null,
     val error: String? = null,
-)
+) {
+    val zones: List<ParkingZone>
+        get() = if (selectedMunicipality == null) allZones
+                else allZones.filter { it.municipalityName == selectedMunicipality }
+}
 
 class HomeViewModel(
     private val repo: ZoneRepository = ZoneRepository(),
@@ -28,10 +34,21 @@ class HomeViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = HomeUiState(zones = repo.getZones())
+                val zones = repo.getZones()
+                val municipalities = zones.map { it.municipalityName }.distinct().sorted()
+                _state.value = HomeUiState(
+                    allZones = zones,
+                    municipalities = municipalities,
+                    selectedMunicipality = _state.value.selectedMunicipality
+                        ?.takeIf { it in municipalities },
+                )
             } catch (e: Exception) {
                 _state.value = HomeUiState(error = "No se pudieron cargar las zonas.")
             }
         }
+    }
+
+    fun selectMunicipality(name: String?) {
+        _state.value = _state.value.copy(selectedMunicipality = name)
     }
 }

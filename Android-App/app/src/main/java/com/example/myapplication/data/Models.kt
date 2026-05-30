@@ -4,6 +4,8 @@ enum class UserRole { RESIDENT, ADMIN }
 
 data class ParkingZone(
     val id: String,
+    val municipalityId: Int,
+    val municipalityName: String,
     val name: String,
     val rate: String,
     val hours: String,
@@ -13,6 +15,7 @@ data class ParkingZone(
 )
 
 data class Vehicle(
+    val id: Int,
     val plate: String,
     val brand: String,
     val model: String,

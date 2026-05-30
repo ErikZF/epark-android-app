@@ -107,6 +107,7 @@ data class CreateSessionRequestDto(
     val userId: Int,
     val vehicleId: Int,
     val zoneId: Int,
+    val spaceNumber: Int,
     val scheduledStart: String,
     val scheduledEnd: String,
 )
@@ -119,6 +120,7 @@ data class SessionDto(
     val zoneName: String,
     val vehicleId: Int,
     val plate: String,
+    val spaceNumber: Int,
     val scheduledStart: String,
     val scheduledEnd: String,
     val actualEnd: String?,

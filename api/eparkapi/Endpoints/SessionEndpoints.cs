@@ -15,6 +15,16 @@ public static class SessionEndpoints
             var zone = await db.Zones.FindAsync(req.ZoneId);
             if (zone is null) return Results.NotFound(new { message = "Zone not found." });
 
+            if (req.SpaceNumber < 1 || req.SpaceNumber > zone.TotalSpots)
+                return Results.BadRequest(new { message = $"Space must be between 1 and {zone.TotalSpots}." });
+
+            var spaceTaken = await db.Sessions.AnyAsync(s =>
+                s.ZoneId == req.ZoneId &&
+                s.SpaceNumber == req.SpaceNumber &&
+                s.Status == SessionStatus.Active);
+            if (spaceTaken)
+                return Results.Conflict(new { message = "That space is already occupied." });
+
             var start = AsUtc(req.ScheduledStart);
             var end = AsUtc(req.ScheduledEnd);
             if (end <= start) return Results.BadRequest(new { message = "End must be after start." });
@@ -24,6 +34,7 @@ public static class SessionEndpoints
                 UserId = req.UserId,
                 VehicleId = req.VehicleId,
                 ZoneId = req.ZoneId,
+                SpaceNumber = req.SpaceNumber,
                 ScheduledStart = start,
                 ScheduledEnd = end,
                 HourlyRate = zone.HourlyRate,
@@ -41,7 +52,7 @@ public static class SessionEndpoints
                 .Where(s => s.UserId == userId)
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new SessionResponse(
-                    s.Id, s.ZoneId, s.Zone.Name, s.VehicleId, s.Vehicle.Plate,
+                    s.Id, s.ZoneId, s.Zone.Name, s.VehicleId, s.Vehicle.Plate, s.SpaceNumber,
                     s.ScheduledStart, s.ScheduledEnd, s.ActualEnd,
                     s.HourlyRate, s.TotalCost, s.Status.ToString()))
                 .ToListAsync();
@@ -54,7 +65,7 @@ public static class SessionEndpoints
                 .Where(s => s.UserId == userId && s.Status == SessionStatus.Active)
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new SessionResponse(
-                    s.Id, s.ZoneId, s.Zone.Name, s.VehicleId, s.Vehicle.Plate,
+                    s.Id, s.ZoneId, s.Zone.Name, s.VehicleId, s.Vehicle.Plate, s.SpaceNumber,
                     s.ScheduledStart, s.ScheduledEnd, s.ActualEnd,
                     s.HourlyRate, s.TotalCost, s.Status.ToString()))
                 .FirstOrDefaultAsync();

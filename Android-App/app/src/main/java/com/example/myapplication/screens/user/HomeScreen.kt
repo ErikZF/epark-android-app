@@ -1,10 +1,10 @@
 package com.example.myapplication.screens.user
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,10 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
-import com.example.myapplication.data.StaticContent
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.theme.*
@@ -32,6 +30,8 @@ fun HomeScreen(
 ) {
     var search by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
+    var municipalityMenuExpanded by remember { mutableStateOf(false) }
+
     val zones = uiState.zones.filter {
         search.isBlank() || it.name.contains(search, ignoreCase = true)
     }
@@ -56,9 +56,45 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text("Municipalidad", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(StaticContent.municipality, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextSecondary)
+                        Box {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { municipalityMenuExpanded = true },
+                            ) {
+                                Text(
+                                    uiState.selectedMunicipality ?: "Todas",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextSecondary)
+                            }
+                            DropdownMenu(
+                                expanded = municipalityMenuExpanded,
+                                onDismissRequest = { municipalityMenuExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Todas") },
+                                    onClick = {
+                                        vm.selectMunicipality(null)
+                                        municipalityMenuExpanded = false
+                                    },
+                                    leadingIcon = if (uiState.selectedMunicipality == null) {
+                                        { Icon(Icons.Default.Check, contentDescription = null) }
+                                    } else null,
+                                )
+                                uiState.municipalities.forEach { name ->
+                                    DropdownMenuItem(
+                                        text = { Text(name) },
+                                        onClick = {
+                                            vm.selectMunicipality(name)
+                                            municipalityMenuExpanded = false
+                                        },
+                                        leadingIcon = if (uiState.selectedMunicipality == name) {
+                                            { Icon(Icons.Default.Check, contentDescription = null) }
+                                        } else null,
+                                    )
+                                }
+                            }
                         }
                     }
                     IconButton(

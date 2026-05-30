@@ -86,9 +86,9 @@ class SessionRepository {
     suspend fun getHistory(userId: Int = AuthState.userId): List<ParkingSession> =
         api.getSessions(userId).map { it.toDomain() }
 
-    suspend fun startSession(vehicleId: Int, zoneId: Int, startIso: String, endIso: String) {
+    suspend fun startSession(vehicleId: Int, zoneId: Int, spaceNumber: Int, startIso: String, endIso: String) {
         api.createSession(
-            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, startIso, endIso)
+            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso, endIso)
         )
     }
 

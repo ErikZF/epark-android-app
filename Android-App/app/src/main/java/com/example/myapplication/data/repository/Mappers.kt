@@ -17,6 +17,8 @@ private fun colones(value: Double): String = "₡${value.toLong()}"
 
 fun ZoneDto.toDomain(): ParkingZone = ParkingZone(
     id = id.toString(),
+    municipalityId = municipalityId,
+    municipalityName = municipalityName,
     name = name,
     rate = "${colones(hourlyRate)}/hr",
     hours = "6:00 am - 24:00 pm",
@@ -28,7 +30,7 @@ fun ZoneDto.toDomain(): ParkingZone = ParkingZone(
 fun SessionDto.toDomain(): ParkingSession = ParkingSession(
     id = id.toString(),
     zoneName = zoneName,
-    spaceNumber = "#%04d".format(id),
+    spaceNumber = "#%04d".format(spaceNumber),
     plate = plate,
     date = scheduledStart.take(10),
     duration = "",
@@ -61,6 +63,7 @@ fun PaymentMethodDto.toDomain(): PaymentMethod = PaymentMethod(
 )
 
 fun VehicleDto.toDomain(): Vehicle = Vehicle(
+    id = id,
     plate = plate,
     brand = brand ?: "",
     model = model ?: "",
