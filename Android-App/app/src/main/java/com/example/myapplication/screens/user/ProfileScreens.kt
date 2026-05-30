@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
 import java.util.Calendar
+import com.example.myapplication.ui.auth.VehicleRegisterViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
@@ -188,12 +189,17 @@ fun EditProfileScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
 }
 
 @Composable
-fun AddVehicleScreen(onBack: () -> Unit, onAdded: () -> Unit, bottomBar: @Composable () -> Unit) {
+fun AddVehicleScreen(
+    onBack: () -> Unit,
+    onAdded: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: VehicleRegisterViewModel = viewModel(),
+) {
     var plate by remember { mutableStateOf("") }
     var brand by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
+    val uiState by vm.state.collectAsState()
 
     Scaffold(
         containerColor = AppBackground,
@@ -217,23 +223,15 @@ fun AddVehicleScreen(onBack: () -> Unit, onAdded: () -> Unit, bottomBar: @Compos
             EparkTextField(value = model, onValueChange = { model = it }, placeholder = "Modelo")
             Spacer(Modifier.height(12.dp))
             EparkTextField(value = year, onValueChange = { year = it }, placeholder = "Año")
-            error?.let {
+            uiState.error?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(24.dp))
             PrimaryButton(
-                text = "Agregar",
-                onClick = {
-                    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-                    val yearInt = year.trim().toIntOrNull()
-                    when {
-                        plate.isBlank() -> error = "La placa es requerida."
-                        yearInt == null || yearInt < 1886 || yearInt > currentYear ->
-                            error = "Año inválido. Debe ser entre 1886 y $currentYear."
-                        else -> { error = null; onAdded() }
-                    }
-                },
+                text = if (uiState.loading) "Agregando..." else "Agregar",
+                enabled = !uiState.loading,
+                onClick = { vm.addVehicle(plate, brand, model, year, onSuccess = onAdded) },
             )
             SecondaryButton(text = "Salir", onClick = onBack)
             Spacer(Modifier.height(24.dp))

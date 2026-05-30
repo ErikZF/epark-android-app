@@ -11,6 +11,7 @@ import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
 
 @Composable
@@ -26,6 +27,9 @@ fun EparkNavHost(navController: NavHostController) {
 
     // Shared ViewModel so ActiveSession and ExtendSession interact with the same state
     val activeSessionVm: ActiveSessionViewModel = viewModel()
+
+    // Scoped here so vehicle adds can trigger a profile refresh on back-navigation
+    val profileVm: ProfileViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -243,6 +247,7 @@ fun EparkNavHost(navController: NavHostController) {
                     }
                 },
                 bottomBar = residentBottomBar,
+                vm = profileVm,
             )
         }
 
@@ -258,7 +263,10 @@ fun EparkNavHost(navController: NavHostController) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
             AddVehicleScreen(
                 onBack = { navController.popBackStack() },
-                onAdded = { navController.popBackStack() },
+                onAdded = {
+                    profileVm.refresh()
+                    navController.popBackStack()
+                },
                 bottomBar = residentBottomBar,
             )
         }
