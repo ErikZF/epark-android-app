@@ -10,6 +10,8 @@ object StaticContent {
     // Shown only if a zone-scoped screen is opened without a zone selected first.
     val placeholderZone = ParkingZone(
         id = "",
+        municipalityId = 0,
+        municipalityName = "",
         name = "Selecciona una zona",
         rate = "",
         hours = "",

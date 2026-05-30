@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,13 +16,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
+import com.example.myapplication.ui.session.ActiveSessionViewModel
+import com.example.myapplication.ui.session.ActiveSessionViewModel.Companion.formatElapsed
 import com.example.myapplication.ui.session.SessionConfigViewModel
 import com.example.myapplication.ui.theme.*
 
@@ -33,7 +39,7 @@ fun SessionConfigScreen(
     bottomBar: @Composable () -> Unit,
     vm: SessionConfigViewModel = viewModel(),
 ) {
-    var spaceDigits by remember { mutableStateOf(listOf("", "", "", "")) }
+    var space by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
     val currentVehicle = uiState.currentVehicle
 
@@ -50,8 +56,10 @@ fun SessionConfigScreen(
         ) {
             Spacer(Modifier.height(20.dp))
             Text("Iniciar parqueo", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            Text("Ingresa el número del espacio físico donde estacionaste",
-                style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Text(
+                "Ingresa el número del espacio físico donde estacionaste",
+                style = MaterialTheme.typography.bodyMedium, color = TextSecondary,
+            )
             Spacer(Modifier.height(16.dp))
 
             Text("Zona seleccionada", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -69,7 +77,7 @@ fun SessionConfigScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(zone.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        Text("Horario Disponible:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text("Horario:", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         Text(zone.hours, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         Spacer(Modifier.height(4.dp))
                         Text(zone.rate, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
@@ -78,23 +86,43 @@ fun SessionConfigScreen(
             }
             Spacer(Modifier.height(16.dp))
 
-            Text("Número de espacio (4 dígitos)", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Text("Número de espacio (máx. 4 dígitos)", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                repeat(4) { i ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(70.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SurfaceWhite)
-                            .border(1.5.dp, BorderColor, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(spaceDigits[i], style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            BasicTextField(
+                value = space,
+                onValueChange = { input ->
+                    if (input.length <= 4 && input.all { it.isDigit() }) space = input
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                cursorBrush = SolidColor(PrimaryGreen),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { _ ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(4) { i ->
+                            val focused = i == space.length.coerceAtMost(3)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(70.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SurfaceWhite)
+                                    .border(
+                                        1.5.dp,
+                                        if (focused) PrimaryGreen else BorderColor,
+                                        RoundedCornerShape(12.dp),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    space.getOrNull(i)?.toString() ?: "",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
                     }
-                }
-            }
+                },
+            )
             Spacer(Modifier.height(16.dp))
 
             Card(
@@ -123,8 +151,16 @@ fun SessionConfigScreen(
                     }
                 }
             }
+            uiState.error?.let { msg ->
+                Spacer(Modifier.height(12.dp))
+                Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton(text = "Iniciar parqueo", onClick = onStartParking)
+            PrimaryButton(
+                text = if (uiState.submitting) "Iniciando..." else "Iniciar parqueo",
+                onClick = { vm.startSession(zone, space, onStartParking) },
+                enabled = !uiState.submitting,
+            )
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -132,7 +168,9 @@ fun SessionConfigScreen(
 
 @Composable
 fun PaymentScreen(
-    zone: ParkingZone,
+    sessionId: Int,
+    totalCost: Double,
+    duration: String,
     onConfirm: () -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
@@ -143,6 +181,8 @@ fun PaymentScreen(
     LaunchedEffect(uiState.methods) {
         if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
     }
+
+    val totalLabel = "₡${totalCost.toLong()}"
 
     Scaffold(
         topBar = { EparkTopBar("Pago de sesión", onBack = onBack) },
@@ -158,7 +198,11 @@ fun PaymentScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            PaymentSummaryCard(total = "₡ 2.000", spaceNumber = "#0042", duration = "02:02")
+            PaymentSummaryCard(
+                total = totalLabel,
+                spaceNumber = "",
+                duration = duration,
+            )
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             uiState.methods.forEach { method ->
                 PaymentMethodCard(
@@ -177,6 +221,9 @@ fun PaymentScreen(
 
 @Composable
 fun PaymentSuccessScreen(
+    totalCost: Double,
+    duration: String,
+    zoneName: String,
     onNewSession: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
@@ -195,10 +242,9 @@ fun PaymentSuccessScreen(
                 title = "¡Pago exitoso!",
                 subtitle = "Tu comprobante está disponible en el historial",
                 rows = listOf(
-                    "Zona" to "Centro San José",
-                    "Espacio" to "#0042",
-                    "Duración" to "02:02",
-                    "Total pagado" to "₡ 2.000",
+                    "Zona" to zoneName,
+                    "Duración" to duration,
+                    "Total pagado" to "₡${totalCost.toLong()}",
                 ),
             )
             Spacer(Modifier.height(24.dp))
@@ -209,107 +255,175 @@ fun PaymentSuccessScreen(
 
 @Composable
 fun ActiveSessionScreen(
-    onFinalize: () -> Unit,
+    onFinalized: (sessionId: Int, totalCost: Double, duration: String) -> Unit,
     onExtend: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: ActiveSessionViewModel,
 ) {
+    val uiState by vm.state.collectAsState()
+    val session = uiState.session
+
     Scaffold(
         bottomBar = bottomBar,
         containerColor = AppBackground,
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-        ) {
-            Spacer(Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text("Sesión activa", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-                    Text("Zona Centro", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(PrimaryGreen)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Text("1 hora", color = SurfaceWhite, fontWeight = FontWeight.Bold)
+        when {
+            uiState.loading -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = PrimaryGreen)
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                elevation = CardDefaults.cardElevation(2.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
+            uiState.error != null && session == null -> {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(uiState.error!!, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(16.dp))
+                        PrimaryButton(text = "Reintentar", onClick = { vm.loadActiveSession() }, modifier = Modifier.width(180.dp))
+                    }
+                }
+            }
+            session != null -> {
                 Column(
-                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 20.dp),
                 ) {
-                    Text("TIEMPO TRANSCURRIDO", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Spacer(Modifier.height(20.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text("Sesión activa", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                            Text(session.zoneName, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(PrimaryGreen)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                formatElapsed(uiState.elapsedSeconds),
+                                color = SurfaceWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(20.dp))
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("TIEMPO TRANSCURRIDO", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                formatElapsed(uiState.elapsedSeconds),
+                                color = PrimaryGreen,
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Espacio #%04d · %s".format(session.spaceNumber, session.plate),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                            elevation = CardDefaults.cardElevation(1.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.CreditCard, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                                    Text("Costo actual", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "₡${uiState.currentCostColones}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                            elevation = CardDefaults.cardElevation(1.dp),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(Icons.Default.Schedule, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
+                                    Text("Tarifa", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "₡${session.hourlyRate.toLong()}/hr",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
-                    Text("03: 40", color = PrimaryGreen, fontSize = 52.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Espacio #0042 PLACA ABC-123", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                    if (uiState.nearingEnd) {
+                        WarningBanner("Quedan menos de 10 minutos para que cierre la zona")
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    uiState.error?.let {
+                        ErrorBanner(it)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    PrimaryButton(
+                        text = if (uiState.finalizing) "Finalizando..." else "Finalizar y pagar",
+                        onClick = {
+                            vm.finalize { sessionId, cost, dur ->
+                                onFinalized(sessionId, cost, dur)
+                            }
+                        },
+                        enabled = !uiState.finalizing && !uiState.extending,
+                    )
+                    SecondaryButton(
+                        text = "Extender sesión",
+                        onClick = onExtend,
+                    )
+                    Spacer(Modifier.height(16.dp))
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                    elevation = CardDefaults.cardElevation(1.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.CreditCard, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                            Text("Costo actual", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text("₡ 123", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                    elevation = CardDefaults.cardElevation(1.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = TextMuted, modifier = Modifier.size(16.dp))
-                            Text("Tarifa", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text("₡ 1200/hr", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            WarningBanner("Se te notificará 10 min antes de vencer")
-            Spacer(Modifier.weight(1f))
-            PrimaryButton(text = "Finalizar y pagar", onClick = onFinalize)
-            SecondaryButton(text = "Extender sesión", onClick = onExtend)
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
 fun ExtendSessionScreen(
-    onAccept: () -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: ActiveSessionViewModel,
 ) {
-    var hours by remember { mutableStateOf("") }
+    val uiState by vm.state.collectAsState()
+    val session = uiState.session
+    var hoursText by remember { mutableStateOf("") }
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    val maxMinutes = remember(session) { vm.maxExtensionMinutes() }
+    val maxHours = maxMinutes / 60
 
     Scaffold(
         topBar = { EparkTopBar("Extender Sesión", onBack = onBack) },
@@ -323,7 +437,11 @@ fun ExtendSessionScreen(
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            Text("Zona Centro", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Text(
+                session?.zoneName ?: "",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+            )
             Spacer(Modifier.height(16.dp))
             Card(
                 shape = RoundedCornerShape(14.dp),
@@ -332,33 +450,71 @@ fun ExtendSessionScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Digite la cantidad de horas que desea extender",
-                        style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                    Text(
+                        "¿Cuántas horas deseas agregar?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    if (maxHours > 0) {
+                        Text(
+                            "Máximo disponible: $maxHours ${if (maxHours == 1) "hora" else "horas"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PrimaryGreen,
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
-                        value = hours,
-                        onValueChange = { hours = it },
+                        value = hoursText,
+                        onValueChange = {
+                            hoursText = it
+                            localError = null
+                        },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryGreen,
                             unfocusedBorderColor = BorderColor,
                         ),
                         modifier = Modifier.width(120.dp),
+                        placeholder = { Text("0", color = TextMuted) },
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Nota: La cantidad máxima por sesión es de 12 hr. Si desea extender más favor comunicar con los administradores\nContactar al : 000-3213-123",
+                        "La zona cierra a las ${session?.zoneCloseHour ?: 22}:00 UTC. " +
+                            "Si la extensión excede ese límite, se ajustará automáticamente.",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
+            localError?.let {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(it)
+            }
+            uiState.error?.let {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(it)
+            }
             Spacer(Modifier.height(12.dp))
-            WarningBanner("Se te notificará 10 min antes de vencer")
+            if (uiState.nearingEnd) {
+                WarningBanner("Quedan menos de 10 minutos para que cierre la zona")
+            }
             Spacer(Modifier.weight(1f))
-            PrimaryButton(text = "Aceptar", onClick = onAccept)
+            PrimaryButton(
+                text = if (uiState.extending) "Extendiendo..." else "Aceptar",
+                enabled = !uiState.extending,
+                onClick = {
+                    val hours = hoursText.trim().toIntOrNull()
+                    when {
+                        hours == null || hours <= 0 -> localError = "Ingresa un número válido de horas."
+                        maxHours > 0 && hours > maxHours -> localError = "El máximo disponible es $maxHours ${if (maxHours == 1) "hora" else "horas"}."
+                        else -> vm.extend(hours * 60, onSuccess = onBack, onError = { localError = it })
+                    }
+                },
+            )
             SecondaryButton(text = "Regresar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }

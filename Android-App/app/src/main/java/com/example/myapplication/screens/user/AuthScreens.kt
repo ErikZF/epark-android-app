@@ -60,7 +60,6 @@ fun LoginScreen(
                 onClick = { vm.login(email, password, onLoggedIn) },
                 enabled = !uiState.loading,
             )
-            SecondaryButton(text = "Salir", onClick = {})
             Spacer(Modifier.height(16.dp))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text("o continúa con", style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = TextMuted)
@@ -139,7 +138,6 @@ fun RegisterScreen(
                     onClick = { vm.register(name, email, password) { showSuccess = true } },
                     enabled = !uiState.loading,
                 )
-                SecondaryButton(text = "Salir", onClick = {})
                 Spacer(Modifier.height(24.dp))
             }
         }

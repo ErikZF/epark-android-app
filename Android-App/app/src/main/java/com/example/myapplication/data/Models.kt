@@ -4,15 +4,33 @@ enum class UserRole { RESIDENT, ADMIN }
 
 data class ParkingZone(
     val id: String,
+    val municipalityId: Int,
+    val municipalityName: String,
     val name: String,
     val rate: String,
     val hours: String,
     val totalSpots: Int,
     val freeSpots: Int,
+    // UTC hours; openHour 0-23, closeHour 1-24 (24 = midnight of next day)
+    val openHour: Int = 6,
+    val closeHour: Int = 22,
     val isActive: Boolean = true,
 )
 
+data class ActiveSession(
+    val id: Int,
+    val zoneName: String,
+    val zoneOpenHour: Int,
+    val zoneCloseHour: Int,
+    val plate: String,
+    val spaceNumber: Int,
+    val scheduledStartMs: Long,
+    val scheduledEndMs: Long,
+    val hourlyRate: Double,
+)
+
 data class Vehicle(
+    val id: Int,
     val plate: String,
     val brand: String,
     val model: String,

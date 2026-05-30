@@ -44,6 +44,10 @@ public class Zone
     public decimal Longitude { get; set; }
     public int TotalSpots { get; set; }
     public decimal HourlyRate { get; set; }
+    // UTC hour when zone opens (0-23)
+    public int OpenHour { get; set; } = 6;
+    // UTC hour when zone closes (1-24; 24 = midnight of next day)
+    public int CloseHour { get; set; } = 22;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -92,6 +96,7 @@ public class Session
     public int UserId { get; set; }
     public int VehicleId { get; set; }
     public int ZoneId { get; set; }
+    public int SpaceNumber { get; set; }
     public DateTime ScheduledStart { get; set; }
     public DateTime ScheduledEnd { get; set; }
     public DateTime? ActualEnd { get; set; }
