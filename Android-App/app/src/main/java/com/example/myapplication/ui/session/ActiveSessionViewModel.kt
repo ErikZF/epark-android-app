@@ -108,6 +108,12 @@ class ActiveSessionViewModel(
         onSuccess(session.id, estimatedCost, formatElapsed(elapsed))
     }
 
+    /** Limpia el estado después del pago exitoso. */
+    fun clearSession() {
+        tickerJob?.cancel()
+        _state.value = ActiveSessionUiState(loading = false)
+    }
+
     /** Maximum minutes the user can add before the zone closes. */
     fun maxExtensionMinutes(): Int {
         val session = _state.value.session ?: return 0

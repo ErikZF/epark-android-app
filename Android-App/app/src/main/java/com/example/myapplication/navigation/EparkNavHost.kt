@@ -230,6 +230,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onConfirm = { actualCost, invoice ->
                     finalizedCost = actualCost
                     finalizedInvoice = invoice
+                    activeSessionVm.clearSession()
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },
                 onBack = { navController.popBackStack() },
@@ -246,6 +247,7 @@ fun EparkNavHost(navController: NavHostController) {
                 zoneName = finalizedZoneName,
                 invoiceNumber = finalizedInvoice,
                 onNewSession = {
+                    activeSessionVm.loadActiveSession()
                     navController.navigate(Routes.USER_HOME) {
                         popUpTo(Routes.USER_HOME) { inclusive = true }
                     }
