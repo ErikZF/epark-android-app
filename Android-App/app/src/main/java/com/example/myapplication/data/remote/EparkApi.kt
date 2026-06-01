@@ -37,6 +37,9 @@ interface EparkApi {
     @GET("api/users/{userId}/vehicles")
     suspend fun getVehicles(@Path("userId") userId: Int): List<VehicleDto>
 
+    @GET("api/vehicles/by-plate/{plate}")
+    suspend fun getVehicleByPlate(@Path("plate") plate: String): VehicleDto
+
     @POST("api/vehicles")
     suspend fun createVehicle(@Body body: CreateVehicleRequestDto)
 

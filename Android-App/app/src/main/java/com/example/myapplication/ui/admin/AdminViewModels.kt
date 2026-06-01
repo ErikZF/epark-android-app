@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.remote.ApiClient
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.FineRepository
 import com.example.myapplication.data.repository.ReportRepository
@@ -184,6 +185,47 @@ class AdminManageZoneViewModel(
                 _state.value = AdminManageZoneUiState(success = true, savedAt = timestamp)
             } catch (e: Exception) {
                 _state.value = AdminManageZoneUiState(error = "No se pudo actualizar la zona.")
+            }
+        }
+    }
+}
+
+data class AdminIssueFineUiState(
+    val loading: Boolean = false,
+    val success: Boolean = false,
+    val error: String? = null,
+)
+
+class AdminIssueFineViewModel(
+    private val fineRepo: FineRepository = FineRepository(),
+    private val zoneRepo: ZoneRepository = ZoneRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(AdminIssueFineUiState())
+    val state: StateFlow<AdminIssueFineUiState> = _state.asStateFlow()
+
+    fun issue(plate: String, zoneId: String, reason: String, amountStr: String) {
+        val amount = amountStr.trim().toDoubleOrNull()
+        val zoneIdInt = zoneId.toIntOrNull()
+        val error = when {
+            plate.isBlank() -> "La placa es requerida."
+            reason.isBlank() -> "El motivo es requerido."
+            amount == null || amount <= 0 -> "El monto debe ser mayor a 0."
+            zoneIdInt == null -> "Selecciona una zona."
+            else -> null
+        }
+        if (error != null) { _state.value = AdminIssueFineUiState(error = error); return }
+
+        _state.value = AdminIssueFineUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                val vehicle = ApiClient.api.getVehicleByPlate(plate.trim().uppercase())
+                fineRepo.issueFine(vehicle.id, zoneIdInt!!, reason.trim(), amount!!)
+                _state.value = AdminIssueFineUiState(success = true)
+            } catch (e: retrofit2.HttpException) {
+                val msg = if (e.code() == 404) "Placa no encontrada." else "Error al emitir multa."
+                _state.value = AdminIssueFineUiState(error = msg)
+            } catch (e: Exception) {
+                _state.value = AdminIssueFineUiState(error = "Error al emitir multa.")
             }
         }
     }

@@ -21,6 +21,17 @@ public static class VehicleEndpoints
             return Results.Ok(vehicles);
         }).WithTags("Vehicles");
 
+        app.MapGet("/api/vehicles/by-plate/{plate}", async (string plate, EparkDbContext db) =>
+        {
+            var v = await db.Vehicles
+                .Include(v => v.VehicleType)
+                .FirstOrDefaultAsync(v => v.Plate.ToLower() == plate.ToLower());
+            if (v is null) return Results.NotFound(new { message = "Plate not found." });
+            return Results.Ok(new VehicleResponse(
+                v.Id, v.UserId, v.VehicleTypeId, v.VehicleType.Name,
+                v.Plate, v.Nickname, v.Brand, v.Model, v.Color, v.IsActive));
+        }).WithTags("Vehicles");
+
         app.MapPost("/api/vehicles", async (CreateVehicleRequest req, EparkDbContext db) =>
         {
             if (await db.Vehicles.AnyAsync(v => v.Plate == req.Plate))

@@ -53,7 +53,7 @@ fun EparkNavHost(navController: NavHostController) {
     )
     val adminRoutes = setOf(
         Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
-        Routes.ADMIN_ADD_ZONE, Routes.ADMIN_ALERT_DETAIL,
+        Routes.ADMIN_ADD_ZONE, Routes.ADMIN_ALERT_DETAIL, Routes.ADMIN_ISSUE_FINE,
     ) + setOf(Routes.ADMIN_MANAGE_ZONE.substringBefore("{"))
 
     val showResidentBar = currentRoute in residentRoutes
@@ -375,7 +375,25 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.ADMIN_FINES) {
             LaunchedEffect(Unit) { adminTab = AdminTab.FINES }
-            AdminFinesScreen(bottomBar = adminBottomBar)
+            AdminFinesScreen(
+                onIssueFine = { navController.navigate(Routes.ADMIN_ISSUE_FINE) },
+                bottomBar = adminBottomBar,
+            )
+        }
+
+        composable(Routes.ADMIN_ISSUE_FINE) {
+            LaunchedEffect(Unit) { adminTab = AdminTab.FINES }
+            val zonesState by adminZonesVm.state.collectAsState()
+            AdminIssueFineScreen(
+                zones = zonesState.zones,
+                onBack = { navController.popBackStack() },
+                onSaved = {
+                    navController.navigate(Routes.ADMIN_FINES) {
+                        popUpTo(Routes.ADMIN_FINES) { inclusive = true }
+                    }
+                },
+                bottomBar = adminBottomBar,
+            )
         }
 
         composable(Routes.ADMIN_ALERTS) {
