@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.ActiveSession
 import com.example.myapplication.data.AlertPreferences
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.SessionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,9 +36,12 @@ class ActiveSessionViewModel(
 
     private var tickerJob: Job? = null
 
-    init { loadActiveSession() }
-
+    // No cargamos en init — esperamos a que el usuario esté autenticado
     fun loadActiveSession() {
+        if (AuthState.userId <= 0) {
+            _state.value = ActiveSessionUiState(loading = false)
+            return
+        }
         tickerJob?.cancel()
         _state.value = ActiveSessionUiState(loading = true)
         viewModelScope.launch {
@@ -98,21 +102,20 @@ class ActiveSessionViewModel(
     }
 
     /**
-     * Finalizes the session and calls [onSuccess] with (sessionId, totalCost, elapsedFormatted).
+     * Navega a la pantalla de pago sin finalizar aún la sesión.
+     * La sesión se finaliza cuando el conductor confirma el pago.
      */
-    fun finalize(onSuccess: (sessionId: Int, totalCost: Double, duration: String) -> Unit) {
+    fun proceedToPayment(onSuccess: (sessionId: Int, estimatedCost: Double, duration: String) -> Unit) {
         val session = _state.value.session ?: return
-        _state.value = _state.value.copy(finalizing = true, error = null)
-        viewModelScope.launch {
-            try {
-                val result = repo.finalize(session.id)
-                tickerJob?.cancel()
-                val elapsed = _state.value.elapsedSeconds
-                onSuccess(result.id, result.totalCost.toDouble(), formatElapsed(elapsed))
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(finalizing = false, error = "No se pudo finalizar la sesión.")
-            }
-        }
+        val elapsed = _state.value.elapsedSeconds
+        val estimatedCost = session.hourlyRate * elapsed / 3600.0
+        onSuccess(session.id, estimatedCost, formatElapsed(elapsed))
+    }
+
+    /** Limpia el estado después del pago exitoso. */
+    fun clearSession() {
+        tickerJob?.cancel()
+        _state.value = ActiveSessionUiState(loading = false)
     }
 
     /** Maximum minutes the user can add before the zone closes. */

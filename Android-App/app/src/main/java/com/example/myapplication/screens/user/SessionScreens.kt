@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
+import com.example.myapplication.ui.payment.SessionPaymentViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel.Companion.formatElapsed
 import com.example.myapplication.ui.session.SessionConfigViewModel
@@ -174,15 +176,18 @@ fun PaymentScreen(
     sessionId: Int,
     totalCost: Double,
     duration: String,
-    onConfirm: () -> Unit,
+    onConfirm: (actualCost: Double, invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
+    onAddCard: () -> Unit,
     bottomBar: @Composable () -> Unit,
-    vm: PaymentMethodsViewModel = viewModel(),
+    methodsVm: PaymentMethodsViewModel = viewModel(),
+    paymentVm: SessionPaymentViewModel = viewModel(),
 ) {
-    val uiState by vm.state.collectAsState()
+    val methodsState by methodsVm.state.collectAsState()
+    val payState by paymentVm.state.collectAsState()
     var selectedId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(uiState.methods) {
-        if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
+    LaunchedEffect(methodsState.methods) {
+        if (selectedId == null) selectedId = methodsState.methods.firstOrNull()?.id
     }
 
     val totalLabel = "₡${totalCost.toLong()}"
@@ -207,16 +212,52 @@ fun PaymentScreen(
                 duration = duration,
             )
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            uiState.methods.forEach { method ->
-                PaymentMethodCard(
-                    method = method,
-                    selected = method.id == selectedId,
-                    onSelect = { selectedId = method.id },
-                )
+            if (methodsState.loading) {
+                CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else if (methodsState.methods.isEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                    elevation = CardDefaults.cardElevation(1.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(Icons.Default.CreditCard, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                        Text("No tienes ninguna tarjeta registrada", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        PrimaryButton(text = "+ Agregar tarjeta", onClick = onAddCard)
+                    }
+                }
+            } else {
+                methodsState.methods.forEach { method ->
+                    PaymentMethodCard(
+                        method = method,
+                        selected = method.id == selectedId,
+                        onSelect = { selectedId = method.id },
+                    )
+                }
+            }
+            if (payState.error != null) {
+                ErrorBanner(payState.error!!)
             }
             Spacer(Modifier.height(8.dp))
-            PrimaryButton(text = "Confirmar pago", onClick = onConfirm)
-            SecondaryButton(text = "Regresar", onClick = onBack)
+            PrimaryButton(
+                text = if (payState.loading) "Procesando..." else "Confirmar pago",
+                enabled = !payState.loading && methodsState.methods.isNotEmpty(),
+                onClick = {
+                    paymentVm.pay(
+                        sessionId = sessionId,
+                        paymentMethodId = selectedId?.toIntOrNull(),
+                        onSuccess = { actualCost, invoice -> onConfirm(actualCost, invoice) },
+                    )
+                },
+            )
+            if (!payState.loading) {
+                SecondaryButton(text = "Regresar", onClick = onBack)
+            }
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -227,6 +268,7 @@ fun PaymentSuccessScreen(
     totalCost: Double,
     duration: String,
     zoneName: String,
+    invoiceNumber: String? = null,
     onNewSession: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
@@ -241,14 +283,16 @@ fun PaymentSuccessScreen(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.Center,
         ) {
+            val rows = buildList {
+                add("Zona" to zoneName)
+                add("Duración" to duration)
+                add("Total pagado" to "₡${totalCost.toLong()}")
+                if (invoiceNumber != null) add("Comprobante" to invoiceNumber)
+            }
             SuccessReceipt(
                 title = "¡Pago exitoso!",
                 subtitle = "Tu comprobante está disponible en el historial",
-                rows = listOf(
-                    "Zona" to zoneName,
-                    "Duración" to duration,
-                    "Total pagado" to "₡${totalCost.toLong()}",
-                ),
+                rows = rows,
             )
             Spacer(Modifier.height(24.dp))
             PrimaryButton(text = "Nueva sesión", onClick = onNewSession)
@@ -406,19 +450,37 @@ fun ActiveSessionScreen(
                         Spacer(Modifier.height(8.dp))
                     }
                     Spacer(Modifier.weight(1f))
+                    var showFinalizeDialog by remember { mutableStateOf(false) }
                     PrimaryButton(
                         text = if (uiState.finalizing) "Finalizando..." else "Finalizar y pagar",
-                        onClick = {
-                            vm.finalize { sessionId, cost, dur ->
-                                onFinalized(sessionId, cost, dur)
-                            }
-                        },
+                        onClick = { showFinalizeDialog = true },
                         enabled = !uiState.finalizing && !uiState.extending,
                     )
                     SecondaryButton(
                         text = "Extender sesión",
                         onClick = onExtend,
                     )
+                    if (showFinalizeDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showFinalizeDialog = false },
+                            title = { Text("¿Proceder al pago?") },
+                            text = { Text("Podrás revisar el monto y confirmar el pago en la siguiente pantalla. Puedes regresar si cambias de opinión.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showFinalizeDialog = false
+                                        vm.proceedToPayment { sessionId, cost, dur ->
+                                            onFinalized(sessionId, cost, dur)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                ) { Text("Ir a pagar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showFinalizeDialog = false }) { Text("Cancelar") }
+                            },
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                 }
             }

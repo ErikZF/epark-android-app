@@ -37,8 +37,10 @@ public static class SessionEndpoints
             if (startLocal >= closeTimeLocal)
                 return Results.BadRequest(new { message = "Zone is already closed for today." });
 
-            // scheduledEnd = zone closing time (UTC) on the local day of the start
-            var closeTime = TimeZoneInfo.ConvertTimeToUtc(closeTimeLocal, LocalTz);
+            // scheduledEnd = start + 1 hour, capped at the zone's closing time
+            var closeTime   = TimeZoneInfo.ConvertTimeToUtc(closeTimeLocal, LocalTz);
+            var defaultEnd  = start.AddHours(1);
+            var scheduledEnd = defaultEnd < closeTime ? defaultEnd : closeTime;
 
             var session = new Session
             {
@@ -47,9 +49,9 @@ public static class SessionEndpoints
                 ZoneId = req.ZoneId,
                 SpaceNumber = req.SpaceNumber,
                 ScheduledStart = start,
-                ScheduledEnd = closeTime,
+                ScheduledEnd = scheduledEnd,
                 HourlyRate = zone.HourlyRate,
-                TotalCost = CostFor(zone.HourlyRate, closeTime - start),
+                TotalCost = CostFor(zone.HourlyRate, scheduledEnd - start),
                 Status = SessionStatus.Active
             };
             db.Sessions.Add(session);

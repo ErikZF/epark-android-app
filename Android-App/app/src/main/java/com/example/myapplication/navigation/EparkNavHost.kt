@@ -10,6 +10,7 @@ import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
@@ -26,6 +27,7 @@ fun EparkNavHost(navController: NavHostController) {
     var finalizedCost by remember { mutableStateOf(0.0) }
     var finalizedDuration by remember { mutableStateOf("") }
     var finalizedZoneName by remember { mutableStateOf("") }
+    var finalizedInvoice by remember { mutableStateOf<String?>(null) }
 
     // Shared ViewModel so ActiveSession and ExtendSession interact with the same state
     val activeSessionVm: ActiveSessionViewModel = viewModel()
@@ -117,7 +119,11 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoggedIn = { role ->
-                    if (role != "admin") activeSessionVm.loadActiveSession()
+                    if (role != "admin") {
+                        activeSessionVm.loadActiveSession()
+                        profileVm.refresh()
+                        homeVm.refresh()
+                    }
                     val destination = if (role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
                     navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -165,10 +171,11 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.SESSION_CONFIG) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            // Si ya hay una sesión activa, redirigir automáticamente
+            // Si ya hay una sesión activa del usuario actual, redirigir automáticamente
             val activeState by activeSessionVm.state.collectAsState()
             LaunchedEffect(activeState.session) {
-                if (activeState.session != null) {
+                val session = activeState.session
+                if (session != null && AuthState.userId > 0 && !activeState.loading) {
                     navController.navigate(Routes.ACTIVE_SESSION) {
                         popUpTo(Routes.SESSION_CONFIG) { inclusive = true }
                     }
@@ -221,8 +228,14 @@ fun EparkNavHost(navController: NavHostController) {
                 sessionId = finalizedSessionId,
                 totalCost = finalizedCost,
                 duration = finalizedDuration,
-                onConfirm = { navController.navigate(Routes.PAYMENT_SUCCESS) },
+                onConfirm = { actualCost, invoice ->
+                    finalizedCost = actualCost
+                    finalizedInvoice = invoice
+                    activeSessionVm.clearSession()
+                    navController.navigate(Routes.PAYMENT_SUCCESS)
+                },
                 onBack = { navController.popBackStack() },
+                onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
             )
         }
@@ -233,7 +246,9 @@ fun EparkNavHost(navController: NavHostController) {
                 totalCost = finalizedCost,
                 duration = finalizedDuration,
                 zoneName = finalizedZoneName,
+                invoiceNumber = finalizedInvoice,
                 onNewSession = {
+                    activeSessionVm.loadActiveSession()
                     navController.navigate(Routes.USER_HOME) {
                         popUpTo(Routes.USER_HOME) { inclusive = true }
                     }
@@ -259,6 +274,10 @@ fun EparkNavHost(navController: NavHostController) {
                 onPaymentMethods = { navController.navigate(Routes.PAYMENT_METHODS) },
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
+                    AuthState.clear()
+                    activeSessionVm.clearSession()
+                    profileVm.clear()
+                    homeVm.selectMunicipality(null)
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -401,6 +420,7 @@ fun EparkNavHost(navController: NavHostController) {
             AdminAlertsScreen(
                 onAlertClick = { alertId -> navController.navigate(Routes.adminAlertDetail(alertId)) },
                 onLogout = {
+                    AuthState.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }

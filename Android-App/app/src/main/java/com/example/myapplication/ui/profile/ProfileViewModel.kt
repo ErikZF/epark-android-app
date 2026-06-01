@@ -33,9 +33,8 @@ class ProfileViewModel(
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
-    init { refresh() }
-
     fun refresh() {
+        if (AuthState.userId <= 0) return
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
@@ -62,6 +61,10 @@ class ProfileViewModel(
                 )
             }
         }
+    }
+
+    fun clear() {
+        _state.value = ProfileUiState(loading = false)
     }
 
     private fun initialsOf(name: String): String =

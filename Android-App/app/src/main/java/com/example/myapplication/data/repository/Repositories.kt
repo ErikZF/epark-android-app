@@ -9,6 +9,7 @@ import com.example.myapplication.data.PaymentMethod
 import com.example.myapplication.data.Vehicle
 import com.example.myapplication.data.remote.ApiClient
 import com.example.myapplication.data.remote.CreateFineRequestDto
+import com.example.myapplication.data.remote.CreatePaymentMethodRequestDto
 import com.example.myapplication.data.remote.CreatePaymentRequestDto
 import com.example.myapplication.data.remote.CreateSessionRequestDto
 import com.example.myapplication.data.remote.CreateVehicleRequestDto
@@ -138,11 +139,28 @@ class PaymentRepository {
     suspend fun getMethods(userId: Int = AuthState.userId): List<PaymentMethod> =
         api.getPaymentMethods(userId).map { it.toDomain() }
 
-    suspend fun pay(amount: Double, referenceType: String, referenceId: Int, paymentMethodId: Int? = null) {
+    suspend fun addMethod(
+        cardBrand: String?,
+        lastFour: String,
+        expiryMonth: Short,
+        expiryYear: Short,
+        isDefault: Boolean,
+    ) = api.createPaymentMethod(
+        CreatePaymentMethodRequestDto(
+            userId = AuthState.userId,
+            cardBrand = cardBrand,
+            lastFour = lastFour,
+            expiryMonth = expiryMonth,
+            expiryYear = expiryYear,
+            token = "tok_sim_${lastFour}",
+            isDefault = isDefault,
+        )
+    )
+
+    suspend fun pay(amount: Double, referenceType: String, referenceId: Int, paymentMethodId: Int? = null) =
         api.createPayment(
             CreatePaymentRequestDto(AuthState.userId, paymentMethodId, amount, referenceType, referenceId)
         )
-    }
 }
 
 class FineRepository {
