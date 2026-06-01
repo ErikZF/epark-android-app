@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
+import com.example.myapplication.ui.payment.AddPaymentMethodViewModel
 import java.util.Calendar
 import com.example.myapplication.ui.auth.VehicleRegisterViewModel
 import com.example.myapplication.ui.components.*
@@ -347,12 +348,17 @@ fun PaymentMethodsScreen(
 }
 
 @Composable
-fun AddPaymentScreen(onBack: () -> Unit, onSaved: () -> Unit, bottomBar: @Composable () -> Unit) {
+fun AddPaymentScreen(
+    onBack: () -> Unit,
+    onSaved: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: AddPaymentMethodViewModel = viewModel(),
+) {
     var cardNumber by remember { mutableStateOf("") }
     var expiry by remember { mutableStateOf("") }
     var cvc by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
+    val uiState by vm.state.collectAsState()
 
     Scaffold(
         topBar = { EparkTopBar("Agregar una forma de pago", onBack = onBack) },
@@ -370,45 +376,22 @@ fun AddPaymentScreen(onBack: () -> Unit, onSaved: () -> Unit, bottomBar: @Compos
             Spacer(Modifier.height(16.dp))
             EparkTextField(value = cardNumber, onValueChange = { cardNumber = it }, placeholder = "Número de tarjeta")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EparkTextField(value = expiry, onValueChange = { expiry = it }, placeholder = "MM / AA", modifier = Modifier.weight(1f))
+                EparkTextField(value = expiry, onValueChange = { expiry = it }, placeholder = "MM/AA", modifier = Modifier.weight(1f))
                 EparkTextField(value = cvc, onValueChange = { cvc = it }, placeholder = "CVC", modifier = Modifier.weight(1f))
             }
             EparkTextField(value = holder, onValueChange = { holder = it }, placeholder = "Nombre del titular")
-            error?.let {
+            uiState.error?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                PrimaryButton(
-                    text = "Guardar",
-                    modifier = Modifier.width(160.dp),
-                    onClick = {
-                        val cal = Calendar.getInstance()
-                        val curYear = cal.get(Calendar.YEAR)
-                        val curMonth = cal.get(Calendar.MONTH) + 1
-
-                        val cardDigits = cardNumber.filter { it.isDigit() }
-                        val expiryClean = expiry.replace(" ", "")
-                        val expiryParts = expiryClean.split("/")
-                        val expMonth = expiryParts.getOrNull(0)?.toIntOrNull() ?: 0
-                        val expYear2d = expiryParts.getOrNull(1)?.toIntOrNull() ?: -1
-                        val expYear = if (expYear2d >= 0) 2000 + expYear2d else -1
-                        val cvcDigits = cvc.filter { it.isDigit() }
-
-                        error = when {
-                            cardDigits.length !in 13..19 -> "Número de tarjeta inválido (13–19 dígitos)."
-                            expiryParts.size != 2 || expMonth !in 1..12 || expYear < 0 ->
-                                "Formato de vencimiento inválido (MM/AA)."
-                            expYear < curYear || (expYear == curYear && expMonth < curMonth) ->
-                                "La tarjeta está vencida."
-                            cvcDigits.length !in 3..4 -> "CVC inválido (3–4 dígitos)."
-                            holder.isBlank() -> "Ingresa el nombre del titular."
-                            else -> null
-                        }
-                        if (error == null) onSaved()
-                    },
-                )
-            }
+            PrimaryButton(
+                text = if (uiState.loading) "Guardando..." else "Guardar tarjeta",
+                enabled = !uiState.loading,
+                onClick = {
+                    vm.save(cardNumber, expiry, holder, onSuccess = onSaved)
+                },
+            )
+            SecondaryButton(text = "Cancelar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }
     }
