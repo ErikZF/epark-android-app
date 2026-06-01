@@ -36,6 +36,10 @@ fun HistoryScreen(
             item {
                 Spacer(Modifier.height(20.dp))
                 Text("Actividad", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                if (uiState.isOffline) {
+                    Spacer(Modifier.height(8.dp))
+                    ErrorBanner("Sin conexión — mostrando historial guardado localmente")
+                }
                 Spacer(Modifier.height(16.dp))
                 SegmentedTabs(
                     options = listOf("Sesiones", "Multas"),

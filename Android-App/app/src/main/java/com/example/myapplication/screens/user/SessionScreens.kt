@@ -28,6 +28,7 @@ import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
+import com.example.myapplication.ui.payment.SessionPaymentViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel.Companion.formatElapsed
 import com.example.myapplication.ui.session.SessionConfigViewModel
@@ -174,15 +175,17 @@ fun PaymentScreen(
     sessionId: Int,
     totalCost: Double,
     duration: String,
-    onConfirm: () -> Unit,
+    onConfirm: (invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
-    vm: PaymentMethodsViewModel = viewModel(),
+    methodsVm: PaymentMethodsViewModel = viewModel(),
+    paymentVm: SessionPaymentViewModel = viewModel(),
 ) {
-    val uiState by vm.state.collectAsState()
+    val methodsState by methodsVm.state.collectAsState()
+    val payState by paymentVm.state.collectAsState()
     var selectedId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(uiState.methods) {
-        if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
+    LaunchedEffect(methodsState.methods) {
+        if (selectedId == null) selectedId = methodsState.methods.firstOrNull()?.id
     }
 
     val totalLabel = "₡${totalCost.toLong()}"
@@ -207,15 +210,29 @@ fun PaymentScreen(
                 duration = duration,
             )
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            uiState.methods.forEach { method ->
+            methodsState.methods.forEach { method ->
                 PaymentMethodCard(
                     method = method,
                     selected = method.id == selectedId,
                     onSelect = { selectedId = method.id },
                 )
             }
+            if (payState.error != null) {
+                ErrorBanner(payState.error!!)
+            }
             Spacer(Modifier.height(8.dp))
-            PrimaryButton(text = "Confirmar pago", onClick = onConfirm)
+            PrimaryButton(
+                text = if (payState.loading) "Procesando..." else "Confirmar pago",
+                enabled = !payState.loading,
+                onClick = {
+                    paymentVm.pay(
+                        sessionId = sessionId,
+                        amount = totalCost,
+                        paymentMethodId = selectedId?.toIntOrNull(),
+                        onSuccess = { invoice -> onConfirm(invoice) },
+                    )
+                },
+            )
             SecondaryButton(text = "Regresar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }
@@ -227,6 +244,7 @@ fun PaymentSuccessScreen(
     totalCost: Double,
     duration: String,
     zoneName: String,
+    invoiceNumber: String? = null,
     onNewSession: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
@@ -241,14 +259,16 @@ fun PaymentSuccessScreen(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.Center,
         ) {
+            val rows = buildList {
+                add("Zona" to zoneName)
+                add("Duración" to duration)
+                add("Total pagado" to "₡${totalCost.toLong()}")
+                if (invoiceNumber != null) add("Comprobante" to invoiceNumber)
+            }
             SuccessReceipt(
                 title = "¡Pago exitoso!",
                 subtitle = "Tu comprobante está disponible en el historial",
-                rows = listOf(
-                    "Zona" to zoneName,
-                    "Duración" to duration,
-                    "Total pagado" to "₡${totalCost.toLong()}",
-                ),
+                rows = rows,
             )
             Spacer(Modifier.height(24.dp))
             PrimaryButton(text = "Nueva sesión", onClick = onNewSession)

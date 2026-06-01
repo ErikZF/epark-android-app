@@ -3,6 +3,7 @@ package com.example.myapplication.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.Fine
+import com.example.myapplication.data.HistoryCache
 import com.example.myapplication.data.ParkingSession
 import com.example.myapplication.data.repository.FineRepository
 import com.example.myapplication.data.repository.SessionRepository
@@ -16,6 +17,7 @@ data class HistoryUiState(
     val sessions: List<ParkingSession> = emptyList(),
     val fines: List<Fine> = emptyList(),
     val error: String? = null,
+    val isOffline: Boolean = false,
 )
 
 class HistoryViewModel(
@@ -29,16 +31,24 @@ class HistoryViewModel(
     init { refresh() }
 
     fun refresh() {
-        _state.value = _state.value.copy(loading = true, error = null)
+        _state.value = _state.value.copy(loading = true, error = null, isOffline = false)
         viewModelScope.launch {
             try {
-                _state.value = HistoryUiState(
-                    loading = false,
-                    sessions = sessionRepo.getHistory(),
-                    fines = fineRepo.getUserFines(),
-                )
+                val sessions = sessionRepo.getHistory()
+                val fines = fineRepo.getUserFines()
+                HistoryCache.saveSessions(sessions)
+                _state.value = HistoryUiState(loading = false, sessions = sessions, fines = fines)
             } catch (e: Exception) {
-                _state.value = HistoryUiState(loading = false, error = "No se pudo cargar la actividad.")
+                val cached = HistoryCache.loadSessions()
+                if (cached.isNotEmpty()) {
+                    _state.value = HistoryUiState(
+                        loading = false,
+                        sessions = cached,
+                        isOffline = true,
+                    )
+                } else {
+                    _state.value = HistoryUiState(loading = false, error = "Sin conexión y sin datos guardados.")
+                }
             }
         }
     }

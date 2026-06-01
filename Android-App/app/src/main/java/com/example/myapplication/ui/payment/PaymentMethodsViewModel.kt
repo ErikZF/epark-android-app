@@ -9,6 +9,37 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+data class SessionPaymentUiState(
+    val loading: Boolean = false,
+    val invoiceNumber: String? = null,
+    val error: String? = null,
+)
+
+class SessionPaymentViewModel(
+    private val repo: PaymentRepository = PaymentRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(SessionPaymentUiState())
+    val state: StateFlow<SessionPaymentUiState> = _state.asStateFlow()
+
+    fun pay(
+        sessionId: Int,
+        amount: Double,
+        paymentMethodId: Int?,
+        onSuccess: (invoiceNumber: String?) -> Unit,
+    ) {
+        _state.value = SessionPaymentUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                val result = repo.pay(amount, "session", sessionId, paymentMethodId)
+                _state.value = SessionPaymentUiState(invoiceNumber = result.invoiceNumber)
+                onSuccess(result.invoiceNumber)
+            } catch (e: Exception) {
+                _state.value = SessionPaymentUiState(error = "No se pudo procesar el pago. Intenta de nuevo.")
+            }
+        }
+    }
+}
+
 data class PaymentMethodsUiState(
     val loading: Boolean = true,
     val methods: List<PaymentMethod> = emptyList(),

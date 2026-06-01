@@ -10,6 +10,7 @@ import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
@@ -26,6 +27,7 @@ fun EparkNavHost(navController: NavHostController) {
     var finalizedCost by remember { mutableStateOf(0.0) }
     var finalizedDuration by remember { mutableStateOf("") }
     var finalizedZoneName by remember { mutableStateOf("") }
+    var finalizedInvoice by remember { mutableStateOf<String?>(null) }
 
     // Shared ViewModel so ActiveSession and ExtendSession interact with the same state
     val activeSessionVm: ActiveSessionViewModel = viewModel()
@@ -221,7 +223,10 @@ fun EparkNavHost(navController: NavHostController) {
                 sessionId = finalizedSessionId,
                 totalCost = finalizedCost,
                 duration = finalizedDuration,
-                onConfirm = { navController.navigate(Routes.PAYMENT_SUCCESS) },
+                onConfirm = { invoice ->
+                    finalizedInvoice = invoice
+                    navController.navigate(Routes.PAYMENT_SUCCESS)
+                },
                 onBack = { navController.popBackStack() },
                 bottomBar = residentBottomBar,
             )
@@ -233,6 +238,7 @@ fun EparkNavHost(navController: NavHostController) {
                 totalCost = finalizedCost,
                 duration = finalizedDuration,
                 zoneName = finalizedZoneName,
+                invoiceNumber = finalizedInvoice,
                 onNewSession = {
                     navController.navigate(Routes.USER_HOME) {
                         popUpTo(Routes.USER_HOME) { inclusive = true }
@@ -259,6 +265,8 @@ fun EparkNavHost(navController: NavHostController) {
                 onPaymentMethods = { navController.navigate(Routes.PAYMENT_METHODS) },
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
+                    AuthState.clear()
+                    activeSessionVm.loadActiveSession()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -401,6 +409,7 @@ fun EparkNavHost(navController: NavHostController) {
             AdminAlertsScreen(
                 onAlertClick = { alertId -> navController.navigate(Routes.adminAlertDetail(alertId)) },
                 onLogout = {
+                    AuthState.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }

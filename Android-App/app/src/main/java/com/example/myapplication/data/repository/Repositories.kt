@@ -138,11 +138,10 @@ class PaymentRepository {
     suspend fun getMethods(userId: Int = AuthState.userId): List<PaymentMethod> =
         api.getPaymentMethods(userId).map { it.toDomain() }
 
-    suspend fun pay(amount: Double, referenceType: String, referenceId: Int, paymentMethodId: Int? = null) {
+    suspend fun pay(amount: Double, referenceType: String, referenceId: Int, paymentMethodId: Int? = null) =
         api.createPayment(
             CreatePaymentRequestDto(AuthState.userId, paymentMethodId, amount, referenceType, referenceId)
         )
-    }
 }
 
 class FineRepository {
