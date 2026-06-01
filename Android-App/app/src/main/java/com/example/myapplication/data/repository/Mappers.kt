@@ -2,6 +2,7 @@ package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.ActiveSession
 import com.example.myapplication.data.AdminReportSummary
+import com.example.myapplication.data.ZoneRevenue
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingSession
 import com.example.myapplication.data.ParkingZone
@@ -43,6 +44,8 @@ fun ZoneDto.toDomain(): ParkingZone = ParkingZone(
     closeHour = closeHour,
     isActive = isActive,
     hourlyRate = hourlyRate,
+    latitude = latitude.toDouble(),
+    longitude = longitude.toDouble(),
 )
 
 private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
@@ -115,4 +118,5 @@ fun ReportSummaryDto.toDomain(): AdminReportSummary = AdminReportSummary(
     finesIssued = finesIssued,
     activeSpots = "$activeSpots/$totalSpots",
     date = "",
+    revenueByZone = revenueByZone.map { ZoneRevenue(it.zoneName, colones(it.revenue), it.sessions) },
 )

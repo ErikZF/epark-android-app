@@ -16,6 +16,8 @@ data class ParkingZone(
     val closeHour: Int = 22,
     val isActive: Boolean = true,
     val hourlyRate: Double = 0.0,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
 )
 
 data class ActiveSession(
@@ -83,10 +85,13 @@ data class AdminAlert(
     val time: String,
 )
 
+data class ZoneRevenue(val zoneName: String, val revenue: String, val sessions: Int)
+
 data class AdminReportSummary(
     val totalSessions: Int,
     val revenue: String,
     val finesIssued: Int,
     val activeSpots: String,
     val date: String,
+    val revenueByZone: List<ZoneRevenue> = emptyList(),
 )

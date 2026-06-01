@@ -162,9 +162,12 @@ public record CreateFineRequest(
     decimal Amount);
 
 // ── Reports ──────────────────────────────────────────
+public record ZoneRevenueResponse(string ZoneName, decimal Revenue, int Sessions);
+
 public record ReportSummaryResponse(
     int TotalSessions,
     decimal Revenue,
     int FinesIssued,
     int ActiveSpots,
-    int TotalSpots);
+    int TotalSpots,
+    IEnumerable<ZoneRevenueResponse> RevenueByZone);

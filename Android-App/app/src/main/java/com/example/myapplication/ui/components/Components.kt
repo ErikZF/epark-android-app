@@ -290,7 +290,7 @@ fun StatusChip(text: String, modifier: Modifier = Modifier) {
 // ──────────────────────────── Zone card ──────────────────────────────────────
 
 @Composable
-fun ZoneCard(zone: ParkingZone, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ZoneCard(zone: ParkingZone, onClick: () -> Unit, modifier: Modifier = Modifier, distance: String? = null) {
     val spotsLabel = when {
         zone.freeSpots == 0 -> "Lleno"
         else -> "${zone.freeSpots} libres"
@@ -319,6 +319,10 @@ fun ZoneCard(zone: ParkingZone, onClick: () -> Unit, modifier: Modifier = Modifi
             Column(modifier = Modifier.weight(1f)) {
                 Text(zone.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(zone.rate, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Text(zone.hours, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                if (distance != null) {
+                    Text(distance, style = MaterialTheme.typography.bodySmall, color = PrimaryGreen)
+                }
             }
             StatusChip(spotsLabel)
         }

@@ -19,9 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.AlertPreferences
+import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
@@ -262,6 +265,18 @@ fun ActiveSessionScreen(
 ) {
     val uiState by vm.state.collectAsState()
     val session = uiState.session
+    val context = LocalContext.current
+
+    // Disparar notificación local cuando la sesión está por vencer (solo una vez por transición)
+    var notificationSent by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.nearingEnd) {
+        if (uiState.nearingEnd && !notificationSent) {
+            notificationSent = true
+            NotificationHelper.showSessionExpiry(context, AlertPreferences.alertMinutes)
+        } else if (!uiState.nearingEnd) {
+            notificationSent = false
+        }
+    }
 
     Scaffold(
         bottomBar = bottomBar,
@@ -302,11 +317,11 @@ fun ActiveSessionScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(20.dp))
-                                .background(PrimaryGreen)
+                                .background(if (uiState.nearingEnd) PendingRed else PrimaryGreen)
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Text(
-                                formatElapsed(uiState.elapsedSeconds),
+                                formatElapsed(uiState.remainingSeconds),
                                 color = SurfaceWhite,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
@@ -324,11 +339,11 @@ fun ActiveSessionScreen(
                             modifier = Modifier.padding(24.dp).fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text("TIEMPO TRANSCURRIDO", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Text("TIEMPO RESTANTE", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                formatElapsed(uiState.elapsedSeconds),
-                                color = PrimaryGreen,
+                                formatElapsed(uiState.remainingSeconds),
+                                color = if (uiState.nearingEnd) PendingRed else PrimaryGreen,
                                 fontSize = 48.sp,
                                 fontWeight = FontWeight.Bold,
                             )

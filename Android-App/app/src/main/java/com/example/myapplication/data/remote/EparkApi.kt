@@ -19,7 +19,10 @@ interface EparkApi {
 
     // ── Zones ──
     @GET("api/zones")
-    suspend fun getZones(@Query("includeInactive") includeInactive: Boolean = false): List<ZoneDto>
+    suspend fun getZones(
+        @Query("includeInactive") includeInactive: Boolean = false,
+        @Query("municipalityId") municipalityId: Int? = null,
+    ): List<ZoneDto>
 
     @GET("api/zones/{id}")
     suspend fun getZone(@Path("id") id: Int): ZoneDto
@@ -33,6 +36,9 @@ interface EparkApi {
     // ── Vehicles ──
     @GET("api/users/{userId}/vehicles")
     suspend fun getVehicles(@Path("userId") userId: Int): List<VehicleDto>
+
+    @GET("api/vehicles/by-plate/{plate}")
+    suspend fun getVehicleByPlate(@Path("plate") plate: String): VehicleDto
 
     @POST("api/vehicles")
     suspend fun createVehicle(@Body body: CreateVehicleRequestDto)

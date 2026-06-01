@@ -26,6 +26,7 @@ import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminAddZoneViewModel
 import com.example.myapplication.ui.admin.AdminFinesViewModel
+import com.example.myapplication.ui.admin.AdminIssueFineViewModel
 import com.example.myapplication.ui.admin.AdminManageZoneViewModel
 import com.example.myapplication.ui.admin.AdminReportsViewModel
 import com.example.myapplication.ui.admin.AdminZonesViewModel
@@ -373,6 +374,31 @@ fun AdminReportsScreen(
                     StatCard(Icons.Default.Place, "Espacios activos", report?.activeSpots ?: "—", iconTint = WarningOrange, modifier = Modifier.weight(1f))
                 }
             }
+            val zones = report?.revenueByZone ?: emptyList()
+            if (zones.isNotEmpty()) {
+                item {
+                    Text("Ingresos por zona", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                items(zones) { z ->
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                        elevation = CardDefaults.cardElevation(1.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(z.zoneName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("${z.sessions} sesiones", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            }
+                            Text(z.revenue, style = MaterialTheme.typography.bodyMedium, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
@@ -382,6 +408,7 @@ fun AdminReportsScreen(
 
 @Composable
 fun AdminFinesScreen(
+    onIssueFine: () -> Unit,
     bottomBar: @Composable () -> Unit,
     vm: AdminFinesViewModel = viewModel(),
 ) {
@@ -395,7 +422,10 @@ fun AdminFinesScreen(
         ) {
             item {
                 Spacer(Modifier.height(20.dp))
-                Text("Multas", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Multas", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                    TextLink("+ Emitir multa", onClick = onIssueFine)
+                }
                 Spacer(Modifier.height(8.dp))
                 if (pendingCount > 0) ErrorBanner("$pendingCount multas pendientes de cobro")
             }
@@ -403,6 +433,77 @@ fun AdminFinesScreen(
                 FineRow(fine = fine)
             }
             item { Spacer(Modifier.height(8.dp)) }
+        }
+    }
+}
+
+// ─────────────────── Admin Issue Fine ─────────────────────────────────────
+
+@Composable
+fun AdminIssueFineScreen(
+    zones: List<com.example.myapplication.data.ParkingZone>,
+    onBack: () -> Unit,
+    onSaved: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: AdminIssueFineViewModel = viewModel(),
+) {
+    var plate by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("5000") }
+    var selectedZoneId by remember { mutableStateOf("") }
+    var zoneMenuExpanded by remember { mutableStateOf(false) }
+    val selectedZoneName = zones.firstOrNull { it.id == selectedZoneId }?.name ?: "Seleccionar zona"
+
+    val uiState by vm.state.collectAsState()
+    LaunchedEffect(uiState.success) { if (uiState.success) onSaved() }
+
+    Scaffold(topBar = { EparkTopBar("Emitir multa", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LabeledField("Placa del vehículo", plate) { plate = it.uppercase() }
+                    Column {
+                        Text("Zona", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Spacer(Modifier.height(4.dp))
+                        Box {
+                            OutlinedButton(onClick = { zoneMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                                Text(selectedZoneName, modifier = Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                            DropdownMenu(expanded = zoneMenuExpanded, onDismissRequest = { zoneMenuExpanded = false }) {
+                                zones.forEach { z ->
+                                    DropdownMenuItem(
+                                        text = { Text(z.name) },
+                                        onClick = { selectedZoneId = z.id; zoneMenuExpanded = false },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    LabeledField("Motivo", reason) { reason = it }
+                    LabeledField("Monto (₡)", amount) { amount = it }
+                }
+            }
+            if (uiState.error != null) {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(uiState.error!!)
+            }
+            Spacer(Modifier.height(24.dp))
+            PrimaryButton(
+                text = if (uiState.loading) "Emitiendo..." else "Emitir multa",
+                enabled = !uiState.loading,
+                onClick = { vm.issue(plate, selectedZoneId, reason, amount) },
+            )
+            SecondaryButton("Cancelar", onClick = onBack)
+            Spacer(Modifier.height(16.dp))
         }
     }
 }

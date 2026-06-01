@@ -1,5 +1,10 @@
 package com.example.myapplication.screens.user
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,14 +18,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.theme.*
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 
+@SuppressLint("MissingPermission")
 @Composable
 fun HomeScreen(
     onZoneClick: (ParkingZone) -> Unit,
@@ -31,6 +41,34 @@ fun HomeScreen(
     var search by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
     var municipalityMenuExpanded by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                .addOnSuccessListener { location ->
+                    location?.let { vm.updateLocation(it.latitude, it.longitude) }
+                }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) {
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                .addOnSuccessListener { location ->
+                    location?.let { vm.updateLocation(it.latitude, it.longitude) }
+                }
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
 
     val zones = uiState.zones.filter {
         search.isBlank() || it.name.contains(search, ignoreCase = true)
@@ -125,7 +163,11 @@ fun HomeScreen(
                 item { Text(msg, color = MaterialTheme.colorScheme.error) }
             }
             items(zones) { zone ->
-                ZoneCard(zone = zone, onClick = { onZoneClick(zone) })
+                val distanceMeters = uiState.distanceTo(zone)
+                val distanceLabel = distanceMeters?.let {
+                    if (it < 1000f) "${"%.0f".format(it)} m" else "${"%.1f".format(it / 1000f)} km"
+                }
+                ZoneCard(zone = zone, distance = distanceLabel, onClick = { onZoneClick(zone) })
             }
             item { Spacer(Modifier.height(8.dp)) }
         }

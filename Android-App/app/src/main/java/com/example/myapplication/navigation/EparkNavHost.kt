@@ -12,6 +12,7 @@ import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
 
@@ -33,6 +34,8 @@ fun EparkNavHost(navController: NavHostController) {
     val profileVm: ProfileViewModel = viewModel()
     // Scoped here so zone edits/creates trigger a list refresh on return
     val adminZonesVm: AdminZonesViewModel = viewModel()
+    // Scoped here so location/state survives tab navigation
+    val homeVm: HomeViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -50,7 +53,7 @@ fun EparkNavHost(navController: NavHostController) {
     )
     val adminRoutes = setOf(
         Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
-        Routes.ADMIN_ADD_ZONE, Routes.ADMIN_ALERT_DETAIL,
+        Routes.ADMIN_ADD_ZONE, Routes.ADMIN_ALERT_DETAIL, Routes.ADMIN_ISSUE_FINE,
     ) + setOf(Routes.ADMIN_MANAGE_ZONE.substringBefore("{"))
 
     val showResidentBar = currentRoute in residentRoutes
@@ -114,6 +117,7 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoggedIn = { role ->
+                    if (role != "admin") activeSessionVm.loadActiveSession()
                     val destination = if (role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
                     navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -155,11 +159,21 @@ fun EparkNavHost(navController: NavHostController) {
                 },
                 onNotificationsClick = { navController.navigate(Routes.NOTIFICATIONS) },
                 bottomBar = residentBottomBar,
+                vm = homeVm,
             )
         }
 
         composable(Routes.SESSION_CONFIG) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            // Si ya hay una sesión activa, redirigir automáticamente
+            val activeState by activeSessionVm.state.collectAsState()
+            LaunchedEffect(activeState.session) {
+                if (activeState.session != null) {
+                    navController.navigate(Routes.ACTIVE_SESSION) {
+                        popUpTo(Routes.SESSION_CONFIG) { inclusive = true }
+                    }
+                }
+            }
             val zone = selectedZone ?: StaticContent.placeholderZone
             SessionConfigScreen(
                 zone = zone,
@@ -361,7 +375,25 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.ADMIN_FINES) {
             LaunchedEffect(Unit) { adminTab = AdminTab.FINES }
-            AdminFinesScreen(bottomBar = adminBottomBar)
+            AdminFinesScreen(
+                onIssueFine = { navController.navigate(Routes.ADMIN_ISSUE_FINE) },
+                bottomBar = adminBottomBar,
+            )
+        }
+
+        composable(Routes.ADMIN_ISSUE_FINE) {
+            LaunchedEffect(Unit) { adminTab = AdminTab.FINES }
+            val zonesState by adminZonesVm.state.collectAsState()
+            AdminIssueFineScreen(
+                zones = zonesState.zones,
+                onBack = { navController.popBackStack() },
+                onSaved = {
+                    navController.navigate(Routes.ADMIN_FINES) {
+                        popUpTo(Routes.ADMIN_FINES) { inclusive = true }
+                    }
+                },
+                bottomBar = adminBottomBar,
+            )
         }
 
         composable(Routes.ADMIN_ALERTS) {

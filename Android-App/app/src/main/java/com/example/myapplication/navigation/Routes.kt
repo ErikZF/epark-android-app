@@ -37,6 +37,7 @@ object Routes {
     const val ADMIN_MANAGE_ZONE = "admin_manage_zone/{zoneId}"
     const val ADMIN_REPORTS = "admin_reports"
     const val ADMIN_FINES = "admin_fines"
+    const val ADMIN_ISSUE_FINE = "admin_issue_fine"
     const val ADMIN_ALERTS = "admin_alerts"
     const val ADMIN_ALERT_DETAIL = "admin_alert_detail/{alertId}"
 
