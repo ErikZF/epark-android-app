@@ -149,7 +149,8 @@ fun RegisterScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 SuccessDialog(
-                    title = "Éxito",
+                    title = "¡Cuenta creada!",
+                    message = "Revisa tu correo electrónico y haz clic en el enlace de activación para confirmar tu cuenta.",
                     primaryLabel = "Continuar",
                     onPrimary = { onRegisterSuccess() },
                 )

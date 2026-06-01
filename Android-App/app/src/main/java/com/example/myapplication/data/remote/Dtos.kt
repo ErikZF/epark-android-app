@@ -176,6 +176,7 @@ data class FineDto(
     val plate: String,
     val zoneId: Int,
     val zoneName: String,
+    val spaceNumber: Int? = null,
     val reason: String,
     val evidenceUrl: String?,
     val amount: Double,

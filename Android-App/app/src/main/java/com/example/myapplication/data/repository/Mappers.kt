@@ -85,9 +85,10 @@ fun SessionDto.toActiveSession(): ActiveSession = ActiveSession(
 fun FineDto.toDomain(): Fine = Fine(
     id = id.toString(),
     zoneName = zoneName,
-    spaceNumber = "",
+    spaceNumber = spaceNumber?.let { "#%04d".format(it) } ?: "—",
     plate = plate,
     date = issuedAt.take(10),
+    time = issuedAt.drop(11).take(5),
     amount = colones(amount),
     isPaid = status == "Paid",
 )

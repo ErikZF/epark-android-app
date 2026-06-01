@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class AdminZonesUiState(
     val loading: Boolean = true,
@@ -120,6 +123,7 @@ data class AdminManageZoneUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val success: Boolean = false,
+    val savedAt: String? = null,
 )
 
 class AdminManageZoneViewModel(
@@ -162,7 +166,8 @@ class AdminManageZoneViewModel(
         viewModelScope.launch {
             try {
                 repo.updateZone(zoneId!!, name.trim(), spots!!, rate!!, openHour!!, closeHour!!, isActive)
-                _state.value = AdminManageZoneUiState(success = true)
+                val timestamp = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                _state.value = AdminManageZoneUiState(success = true, savedAt = timestamp)
             } catch (e: Exception) {
                 _state.value = AdminManageZoneUiState(error = "No se pudo actualizar la zona.")
             }

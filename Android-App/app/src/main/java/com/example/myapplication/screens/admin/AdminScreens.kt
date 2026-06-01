@@ -173,10 +173,6 @@ fun AdminManageZoneScreen(
 
     val uiState by vm.state.collectAsState()
 
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) onConfirm()
-    }
-
     Scaffold(topBar = { EparkTopBar("Gestionar zona", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -215,6 +211,22 @@ fun AdminManageZoneScreen(
                     LabeledField("Nombre", name) { name = it }
                     LabeledField("Espacios", spaces) { spaces = it }
                     LabeledField("Tarifa/hr (₡)", rate) { rate = it }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MintAccent)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(14.dp))
+                        Text(
+                            "Los cambios de tarifa aplican solo a sesiones nuevas.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PrimaryGreen,
+                        )
+                    }
                     Text("Horario (hora en formato 0-23)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(Modifier.weight(1f)) {
@@ -238,15 +250,33 @@ fun AdminManageZoneScreen(
                 Spacer(Modifier.height(8.dp))
                 ErrorBanner(uiState.error!!)
             }
+            if (uiState.success && uiState.savedAt != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MintAccent)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(16.dp))
+                    Text("Cambios guardados el ${uiState.savedAt}", style = MaterialTheme.typography.bodySmall, color = PrimaryGreen)
+                }
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton(
-                text = if (uiState.loading) "Guardando..." else "Confirmar",
-                enabled = !uiState.loading,
-                onClick = {
-                    vm.save(zone.id, name, spaces, rate, openHour, closeHour, isActive)
-                },
+            if (!uiState.success) {
+                PrimaryButton(
+                    text = if (uiState.loading) "Guardando..." else "Confirmar",
+                    enabled = !uiState.loading,
+                    onClick = { vm.save(zone.id, name, spaces, rate, openHour, closeHour, isActive) },
+                )
+            }
+            SecondaryButton(
+                text = if (uiState.success) "Volver" else "Cancelar",
+                onClick = if (uiState.success) onConfirm else onBack,
             )
-            SecondaryButton("Cancelar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }
     }
