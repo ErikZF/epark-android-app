@@ -171,10 +171,11 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.SESSION_CONFIG) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
-            // Si ya hay una sesión activa, redirigir automáticamente
+            // Si ya hay una sesión activa del usuario actual, redirigir automáticamente
             val activeState by activeSessionVm.state.collectAsState()
             LaunchedEffect(activeState.session) {
-                if (activeState.session != null) {
+                val session = activeState.session
+                if (session != null && AuthState.userId > 0 && !activeState.loading) {
                     navController.navigate(Routes.ACTIVE_SESSION) {
                         popUpTo(Routes.SESSION_CONFIG) { inclusive = true }
                     }
@@ -274,7 +275,9 @@ fun EparkNavHost(navController: NavHostController) {
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
                     AuthState.clear()
-                    activeSessionVm.loadActiveSession()
+                    activeSessionVm.clearSession()
+                    profileVm.clear()
+                    homeVm.selectMunicipality(null)
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }

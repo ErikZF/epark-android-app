@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.ActiveSession
 import com.example.myapplication.data.AlertPreferences
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.SessionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,9 +36,12 @@ class ActiveSessionViewModel(
 
     private var tickerJob: Job? = null
 
-    init { loadActiveSession() }
-
+    // No cargamos en init — esperamos a que el usuario esté autenticado
     fun loadActiveSession() {
+        if (AuthState.userId <= 0) {
+            _state.value = ActiveSessionUiState(loading = false)
+            return
+        }
         tickerJob?.cancel()
         _state.value = ActiveSessionUiState(loading = true)
         viewModelScope.launch {
