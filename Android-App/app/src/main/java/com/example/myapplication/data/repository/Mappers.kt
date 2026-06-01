@@ -2,6 +2,7 @@ package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.ActiveSession
 import com.example.myapplication.data.AdminReportSummary
+import com.example.myapplication.data.ZoneRevenue
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingSession
 import com.example.myapplication.data.ParkingZone
@@ -115,4 +116,5 @@ fun ReportSummaryDto.toDomain(): AdminReportSummary = AdminReportSummary(
     finesIssued = finesIssued,
     activeSpots = "$activeSpots/$totalSpots",
     date = "",
+    revenueByZone = revenueByZone.map { ZoneRevenue(it.zoneName, colones(it.revenue), it.sessions) },
 )

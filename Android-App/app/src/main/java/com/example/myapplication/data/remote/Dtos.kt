@@ -195,10 +195,17 @@ data class CreateFineRequestDto(
 )
 
 // ── Reports ──────────────────────────────────────────
+data class ZoneRevenueDto(
+    val zoneName: String,
+    val revenue: Double,
+    val sessions: Int,
+)
+
 data class ReportSummaryDto(
     val totalSessions: Int,
     val revenue: Double,
     val finesIssued: Int,
     val activeSpots: Int,
     val totalSpots: Int,
+    val revenueByZone: List<ZoneRevenueDto> = emptyList(),
 )

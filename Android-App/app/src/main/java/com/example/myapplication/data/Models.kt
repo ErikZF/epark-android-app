@@ -83,10 +83,13 @@ data class AdminAlert(
     val time: String,
 )
 
+data class ZoneRevenue(val zoneName: String, val revenue: String, val sessions: Int)
+
 data class AdminReportSummary(
     val totalSessions: Int,
     val revenue: String,
     val finesIssued: Int,
     val activeSpots: String,
     val date: String,
+    val revenueByZone: List<ZoneRevenue> = emptyList(),
 )

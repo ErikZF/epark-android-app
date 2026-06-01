@@ -12,10 +12,11 @@ public static class ZoneEndpoints
     {
         var group = app.MapGroup("/api/zones").WithTags("Zones");
 
-        group.MapGet("/", async (EparkDbContext db, bool includeInactive = false) =>
+        group.MapGet("/", async (EparkDbContext db, bool includeInactive = false, int? municipalityId = null) =>
         {
             var rows = await db.Zones
-                .Where(z => includeInactive || z.IsActive)
+                .Where(z => (includeInactive || z.IsActive)
+                         && (municipalityId == null || z.MunicipalityId == municipalityId))
                 .Select(z => new
                 {
                     Zone = z,

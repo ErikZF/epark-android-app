@@ -45,7 +45,8 @@ class AuthRepository {
 }
 
 class ZoneRepository {
-    suspend fun getZones(): List<ParkingZone> = api.getZones().map { it.toDomain() }
+    suspend fun getZones(municipalityId: Int? = null): List<ParkingZone> =
+        api.getZones(municipalityId = municipalityId).map { it.toDomain() }
 
     suspend fun addZone(
         municipalityId: Int,

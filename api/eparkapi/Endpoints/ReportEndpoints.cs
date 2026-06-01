@@ -37,13 +37,27 @@ public static class ReportEndpoints
             }
 
             var totalSessions = await sessionsQuery.CountAsync();
-            var revenue       = await paymentsQuery.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var revenue       = await paymentsQuery
+                .Where(p => p.ReferenceType == PaymentReference.Session)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
             var finesIssued   = await finesQuery.CountAsync();
             var activeSpots   = await db.Sessions.CountAsync(s => s.Status == SessionStatus.Active);
             var totalSpots    = await db.Zones.Where(z => z.IsActive).SumAsync(z => (int?)z.TotalSpots) ?? 0;
 
+            // Revenue breakdown per zone (only session payments)
+            var revenueByZone = await (
+                from p in db.Payments
+                join s in sessionsQuery on p.ReferenceId equals s.Id
+                join z in db.Zones on s.ZoneId equals z.Id
+                where p.Status == PaymentStatus.Completed
+                   && p.ReferenceType == PaymentReference.Session
+                group p by z.Name into g
+                orderby g.Sum(x => x.Amount) descending
+                select new ZoneRevenueResponse(g.Key, g.Sum(x => x.Amount), g.Count())
+            ).ToListAsync();
+
             return Results.Ok(new ReportSummaryResponse(
-                totalSessions, revenue, finesIssued, activeSpots, totalSpots));
+                totalSessions, revenue, finesIssued, activeSpots, totalSpots, revenueByZone));
         }).WithTags("Reports");
     }
 }

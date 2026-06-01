@@ -373,6 +373,31 @@ fun AdminReportsScreen(
                     StatCard(Icons.Default.Place, "Espacios activos", report?.activeSpots ?: "—", iconTint = WarningOrange, modifier = Modifier.weight(1f))
                 }
             }
+            val zones = report?.revenueByZone ?: emptyList()
+            if (zones.isNotEmpty()) {
+                item {
+                    Text("Ingresos por zona", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                items(zones) { z ->
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                        elevation = CardDefaults.cardElevation(1.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(z.zoneName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("${z.sessions} sesiones", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            }
+                            Text(z.revenue, style = MaterialTheme.typography.bodyMedium, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
             item { Spacer(Modifier.height(8.dp)) }
         }
     }

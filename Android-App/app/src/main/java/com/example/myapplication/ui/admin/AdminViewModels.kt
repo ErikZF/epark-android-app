@@ -34,7 +34,8 @@ class AdminZonesViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = AdminZonesUiState(loading = false, zones = repo.getZones())
+                val zones = repo.getZones(municipalityId = AuthState.municipalityId.takeIf { it > 0 })
+                _state.value = AdminZonesUiState(loading = false, zones = zones)
             } catch (e: Exception) {
                 _state.value = AdminZonesUiState(loading = false, error = "No se pudieron cargar las zonas.")
             }
