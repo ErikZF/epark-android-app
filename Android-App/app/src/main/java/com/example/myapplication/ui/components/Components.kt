@@ -498,8 +498,9 @@ fun FineRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(fine.zoneName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text("Espacio ${fine.spaceNumber}  ${fine.date}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                    if (!fine.plate.isEmpty()) {
+                    Text("Espacio ${fine.spaceNumber}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("${fine.date}  ${fine.time}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    if (fine.plate.isNotEmpty()) {
                         Text("Placa ${fine.plate}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     }
                 }

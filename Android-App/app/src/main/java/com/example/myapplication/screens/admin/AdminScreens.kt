@@ -1,5 +1,6 @@
 package com.example.myapplication.screens.admin
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,9 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.Calendar
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
@@ -173,10 +176,6 @@ fun AdminManageZoneScreen(
 
     val uiState by vm.state.collectAsState()
 
-    LaunchedEffect(uiState.success) {
-        if (uiState.success) onConfirm()
-    }
-
     Scaffold(topBar = { EparkTopBar("Gestionar zona", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
@@ -215,6 +214,22 @@ fun AdminManageZoneScreen(
                     LabeledField("Nombre", name) { name = it }
                     LabeledField("Espacios", spaces) { spaces = it }
                     LabeledField("Tarifa/hr (₡)", rate) { rate = it }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MintAccent)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(14.dp))
+                        Text(
+                            "Los cambios de tarifa aplican solo a sesiones nuevas.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PrimaryGreen,
+                        )
+                    }
                     Text("Horario (hora en formato 0-23)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(Modifier.weight(1f)) {
@@ -238,15 +253,33 @@ fun AdminManageZoneScreen(
                 Spacer(Modifier.height(8.dp))
                 ErrorBanner(uiState.error!!)
             }
+            if (uiState.success && uiState.savedAt != null) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MintAccent)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(16.dp))
+                    Text("Cambios guardados el ${uiState.savedAt}", style = MaterialTheme.typography.bodySmall, color = PrimaryGreen)
+                }
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton(
-                text = if (uiState.loading) "Guardando..." else "Confirmar",
-                enabled = !uiState.loading,
-                onClick = {
-                    vm.save(zone.id, name, spaces, rate, openHour, closeHour, isActive)
-                },
+            if (!uiState.success) {
+                PrimaryButton(
+                    text = if (uiState.loading) "Guardando..." else "Confirmar",
+                    enabled = !uiState.loading,
+                    onClick = { vm.save(zone.id, name, spaces, rate, openHour, closeHour, isActive) },
+                )
+            }
+            SecondaryButton(
+                text = if (uiState.success) "Volver" else "Cancelar",
+                onClick = if (uiState.success) onConfirm else onBack,
             )
-            SecondaryButton("Cancelar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -261,6 +294,18 @@ fun AdminReportsScreen(
 ) {
     val uiState by vm.state.collectAsState()
     val report = uiState.report
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    fun showDatePicker(current: String, onPicked: (String) -> Unit) {
+        val parts = current.split("-")
+        val y = parts.getOrNull(0)?.toIntOrNull() ?: calendar.get(Calendar.YEAR)
+        val m = (parts.getOrNull(1)?.toIntOrNull() ?: (calendar.get(Calendar.MONTH) + 1)) - 1
+        val d = parts.getOrNull(2)?.toIntOrNull() ?: calendar.get(Calendar.DAY_OF_MONTH)
+        DatePickerDialog(context, { _, year, month, day ->
+            onPicked("%04d-%02d-%02d".format(year, month + 1, day))
+        }, y, m, d).show()
+    }
 
     Scaffold(bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(
@@ -278,17 +323,44 @@ fun AdminReportsScreen(
                     elevation = CardDefaults.cardElevation(2.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Buscar por fecha", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                        Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("Date", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
-                            Text(report?.date ?: "—", color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Filtrar por rango de fechas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(
+                                onClick = { showDatePicker(uiState.fromDate) { vm.setFromDate(it) } },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (uiState.fromDate.isBlank()) "Desde" else uiState.fromDate, style = MaterialTheme.typography.bodySmall)
+                            }
+                            OutlinedButton(
+                                onClick = { showDatePicker(uiState.toDate) { vm.setToDate(it) } },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (uiState.toDate.isBlank()) "Hasta" else uiState.toDate, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        PrimaryButton(
+                            text = if (uiState.loading) "Cargando..." else "Buscar",
+                            enabled = !uiState.loading,
+                            onClick = { vm.refresh() },
+                        )
+                        if (uiState.fromDate.isNotBlank() || uiState.toDate.isNotBlank()) {
+                            SecondaryButton("Limpiar filtros", onClick = {
+                                vm.setFromDate("")
+                                vm.setToDate("")
+                                vm.refresh()
+                            })
                         }
                     }
                 }
             }
-            item { StatusChip("Hoy") }
+            if (uiState.error != null) {
+                item { ErrorBanner(uiState.error!!) }
+            }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatCard(Icons.Default.LocalParking, "Total sesiones", (report?.totalSessions ?: 0).toString(), modifier = Modifier.weight(1f))

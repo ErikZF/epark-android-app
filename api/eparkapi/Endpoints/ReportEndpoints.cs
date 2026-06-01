@@ -9,15 +9,38 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db) =>
+        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to) =>
         {
-            var totalSessions = await db.Sessions.CountAsync();
-            var revenue = await db.Payments
-                .Where(p => p.Status == PaymentStatus.Completed)
-                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
-            var finesIssued = await db.Fines.CountAsync();
-            var activeSpots = await db.Sessions.CountAsync(s => s.Status == SessionStatus.Active);
-            var totalSpots = await db.Zones.Where(z => z.IsActive).SumAsync(z => (int?)z.TotalSpots) ?? 0;
+            DateTimeOffset? fromDate = null;
+            DateTimeOffset? toDate   = null;
+
+            if (!string.IsNullOrWhiteSpace(from) && DateTimeOffset.TryParse(from, out var fd))
+                fromDate = fd.ToUniversalTime();
+            if (!string.IsNullOrWhiteSpace(to) && DateTimeOffset.TryParse(to, out var td))
+                toDate = td.ToUniversalTime().AddDays(1).AddSeconds(-1);
+
+            var sessionsQuery = db.Sessions.AsQueryable();
+            var paymentsQuery = db.Payments.Where(p => p.Status == PaymentStatus.Completed);
+            var finesQuery    = db.Fines.AsQueryable();
+
+            if (fromDate.HasValue)
+            {
+                sessionsQuery = sessionsQuery.Where(s => s.ScheduledStart >= fromDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.PaidAt >= fromDate.Value);
+                finesQuery    = finesQuery.Where(f => f.IssuedAt >= fromDate.Value);
+            }
+            if (toDate.HasValue)
+            {
+                sessionsQuery = sessionsQuery.Where(s => s.ScheduledStart <= toDate.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.PaidAt <= toDate.Value);
+                finesQuery    = finesQuery.Where(f => f.IssuedAt <= toDate.Value);
+            }
+
+            var totalSessions = await sessionsQuery.CountAsync();
+            var revenue       = await paymentsQuery.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var finesIssued   = await finesQuery.CountAsync();
+            var activeSpots   = await db.Sessions.CountAsync(s => s.Status == SessionStatus.Active);
+            var totalSpots    = await db.Zones.Where(z => z.IsActive).SumAsync(z => (int?)z.TotalSpots) ?? 0;
 
             return Results.Ok(new ReportSummaryResponse(
                 totalSessions, revenue, finesIssued, activeSpots, totalSpots));
