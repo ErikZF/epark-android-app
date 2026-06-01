@@ -14,6 +14,7 @@ import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
+import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
 
@@ -34,6 +35,8 @@ fun EparkNavHost(navController: NavHostController) {
 
     // Scoped here so vehicle adds can trigger a profile refresh on back-navigation
     val profileVm: ProfileViewModel = viewModel()
+    // Scoped here so returning from ADD_PAYMENT triggers a methods refresh on PaymentScreen
+    val paymentMethodsVm: PaymentMethodsViewModel = viewModel()
     // Scoped here so zone edits/creates trigger a list refresh on return
     val adminZonesVm: AdminZonesViewModel = viewModel()
     // Scoped here so location/state survives tab navigation
@@ -45,6 +48,11 @@ fun EparkNavHost(navController: NavHostController) {
     var adminTab by remember { mutableStateOf(AdminTab.ZONES) }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+    // Refresh payment methods whenever the user lands (or returns) to the payment screen
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == Routes.PAYMENT) paymentMethodsVm.refresh()
+    }
 
     // Determine which bottom bar to show
     val residentRoutes = setOf(
@@ -237,6 +245,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
+                methodsVm = paymentMethodsVm,
             )
         }
 

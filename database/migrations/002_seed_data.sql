@@ -34,24 +34,14 @@ INSERT INTO municipalities (name, country) VALUES
 -- password: Admin1234! (bcrypt hash – replace in production)
 -- ─────────────────────────────────────────────
 INSERT INTO users (role_id, municipality_id, full_name, email, password_hash, phone) VALUES
-    (
-        (SELECT id FROM roles WHERE name = 'driver'),
-        (SELECT id FROM municipalities WHERE name = 'Cartago'),
-        'E-Park Driver',
-        'nei@hotmail.com',
-        '123',
-        '+50688880000'
-    );
-
-INSERT INTO users (role_id, municipality_id, full_name, email, password_hash, phone) VALUES
-    (
-        (SELECT id FROM roles WHERE name = 'admin'),
-        (SELECT id FROM municipalities WHERE name = 'Cartago'),
-        'E-Park Admin',
-        'admin@epark.cr',
-        '$2a$12$placeholder_hash_replace_in_prod',
-        '+50688880000'
-    );
+(
+    (SELECT id FROM roles WHERE name = 'admin'),
+    (SELECT id FROM municipalities WHERE name = 'Cartago'),
+    'E-Park Admin',
+    'admin@epark.cr',
+    '$2a$12$placeholder_hash_replace_in_prod',
+    '+50688880000'
+);
 
 -- ─────────────────────────────────────────────
 -- Sample zones (San José)
