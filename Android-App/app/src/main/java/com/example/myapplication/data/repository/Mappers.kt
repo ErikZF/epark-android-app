@@ -44,6 +44,8 @@ fun ZoneDto.toDomain(): ParkingZone = ParkingZone(
     closeHour = closeHour,
     isActive = isActive,
     hourlyRate = hourlyRate,
+    latitude = latitude.toDouble(),
+    longitude = longitude.toDouble(),
 )
 
 private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {

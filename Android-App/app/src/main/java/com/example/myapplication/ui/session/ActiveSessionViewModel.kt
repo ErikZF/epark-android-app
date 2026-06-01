@@ -3,6 +3,7 @@ package com.example.myapplication.ui.session
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.ActiveSession
+import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.repository.SessionRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,6 +18,7 @@ data class ActiveSessionUiState(
     val loading: Boolean = true,
     val session: ActiveSession? = null,
     val elapsedSeconds: Long = 0L,
+    val remainingSeconds: Long = 0L,
     val currentCostColones: Long = 0L,
     val nearingEnd: Boolean = false,
     val finalizing: Boolean = false,
@@ -62,10 +64,12 @@ class ActiveSessionViewModel(
                 val remainingSeconds = (scheduledSeconds - elapsed).coerceAtLeast(0L)
 
                 val costColones = (session.hourlyRate * elapsed / 3600.0).toLong()
-                val nearingEnd = remainingSeconds in 1..600 // within 10 minutes
+                val alertSeconds = (AlertPreferences.alertMinutes * 60).toLong()
+                val nearingEnd = remainingSeconds in 1..alertSeconds
 
                 _state.value = _state.value.copy(
                     elapsedSeconds = elapsed,
+                    remainingSeconds = remainingSeconds,
                     currentCostColones = costColones,
                     nearingEnd = nearingEnd,
                 )

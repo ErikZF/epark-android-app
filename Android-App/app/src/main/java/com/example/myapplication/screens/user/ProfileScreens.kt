@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
 import java.util.Calendar
@@ -84,6 +85,9 @@ fun ProfileScreen(
                 VehicleCard(vehicle = vehicle)
             }
             item {
+                var alertMinutes by remember { mutableStateOf(AlertPreferences.alertMinutes) }
+                var showAlertDialog by remember { mutableStateOf(false) }
+
                 Card(
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
@@ -102,7 +106,55 @@ fun ProfileScreen(
                             label = "Notificaciones",
                             onClick = onNotifications,
                         )
+                        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Outlined.Timer, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("Alerta de vencimiento", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { showAlertDialog = true }) {
+                                Text("$alertMinutes min", color = PrimaryGreen, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
                     }
+                }
+
+                if (showAlertDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showAlertDialog = false },
+                        title = { Text("Alerta de vencimiento") },
+                        text = {
+                            Column {
+                                Text("Avísame cuando queden:", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                                Spacer(Modifier.height(12.dp))
+                                listOf(5, 10, 15, 20).forEach { mins ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        RadioButton(
+                                            selected = alertMinutes == mins,
+                                            onClick = {
+                                                alertMinutes = mins
+                                                AlertPreferences.alertMinutes = mins
+                                                showAlertDialog = false
+                                            },
+                                        )
+                                        Text("$mins minutos")
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showAlertDialog = false }) { Text("Cancelar") }
+                        },
+                    )
                 }
             }
             item {

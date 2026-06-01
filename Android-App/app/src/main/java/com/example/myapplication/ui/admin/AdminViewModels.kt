@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.FineRepository
 import com.example.myapplication.data.repository.ReportRepository
 import com.example.myapplication.data.repository.ZoneRepository
