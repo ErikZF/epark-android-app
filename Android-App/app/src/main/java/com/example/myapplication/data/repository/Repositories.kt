@@ -18,16 +18,18 @@ import com.example.myapplication.data.remote.EparkApi
 import com.example.myapplication.data.remote.UpdateZoneRequestDto
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
 import com.example.myapplication.data.remote.FinalizeSessionResponseDto
+import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.remote.LoginRequestDto
 import com.example.myapplication.data.remote.RegisterRequestDto
 
 private val api: EparkApi get() = ApiClient.api
 
 class AuthRepository {
-    /** Logs in and stores the session in [AuthState]. Returns the role. */
+    /** Logs in, stores the session in [AuthState], and persists it to DataStore. Returns the role. */
     suspend fun login(email: String, password: String): String {
         val auth = api.login(LoginRequestDto(email.trim(), password))
         AuthState.set(auth)
+        AuthPreferences.save(auth)
         return auth.role
     }
 
@@ -42,6 +44,7 @@ class AuthRepository {
             RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
         )
         AuthState.set(auth)
+        AuthPreferences.save(auth)
         return auth.role
     }
 }

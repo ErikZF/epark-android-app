@@ -1,17 +1,24 @@
 package com.example.myapplication.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.data.repository.AuthState
+import kotlinx.coroutines.launch
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.history.HistoryViewModel
@@ -55,6 +62,8 @@ fun EparkNavHost(navController: NavHostController) {
     val vehiclesVm: VehiclesViewModel = viewModel()
     // Scoped here so fine payment can trigger a refresh on the history list
     val historyVm: HistoryViewModel = viewModel()
+
+    val coroutineScope = rememberCoroutineScope()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -143,7 +152,33 @@ fun EparkNavHost(navController: NavHostController) {
         }
     }
 
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    NavHost(navController = navController, startDestination = Routes.SPLASH) {
+
+        // ── Splash / session restore ──────────────────────────────────────
+        composable(Routes.SPLASH) {
+            LaunchedEffect(Unit) {
+                val stored = AuthPreferences.load()
+                if (stored != null) {
+                    AuthState.set(stored)
+                    if (stored.role != "admin") {
+                        activeSessionVm.loadActiveSession()
+                        profileVm.refresh()
+                        homeVm.refresh()
+                    }
+                    val destination = if (stored.role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
 
         // ── Auth ──────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
@@ -309,6 +344,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onPaymentMethods = { navController.navigate(Routes.PAYMENT_METHODS) },
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
+                    coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     activeSessionVm.clearSession()
                     profileVm.clear()
@@ -503,6 +539,7 @@ fun EparkNavHost(navController: NavHostController) {
             AdminAlertsScreen(
                 onAlertClick = { alertId -> navController.navigate(Routes.adminAlertDetail(alertId)) },
                 onLogout = {
+                    coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
