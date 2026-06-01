@@ -178,6 +178,7 @@ fun PaymentScreen(
     duration: String,
     onConfirm: (actualCost: Double, invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
+    onAddCard: () -> Unit,
     bottomBar: @Composable () -> Unit,
     methodsVm: PaymentMethodsViewModel = viewModel(),
     paymentVm: SessionPaymentViewModel = viewModel(),
@@ -211,12 +212,33 @@ fun PaymentScreen(
                 duration = duration,
             )
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            methodsState.methods.forEach { method ->
-                PaymentMethodCard(
-                    method = method,
-                    selected = method.id == selectedId,
-                    onSelect = { selectedId = method.id },
-                )
+            if (methodsState.loading) {
+                CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else if (methodsState.methods.isEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                    elevation = CardDefaults.cardElevation(1.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(Icons.Default.CreditCard, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                        Text("No tienes ninguna tarjeta registrada", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        PrimaryButton(text = "+ Agregar tarjeta", onClick = onAddCard)
+                    }
+                }
+            } else {
+                methodsState.methods.forEach { method ->
+                    PaymentMethodCard(
+                        method = method,
+                        selected = method.id == selectedId,
+                        onSelect = { selectedId = method.id },
+                    )
+                }
             }
             if (payState.error != null) {
                 ErrorBanner(payState.error!!)
@@ -224,7 +246,7 @@ fun PaymentScreen(
             Spacer(Modifier.height(8.dp))
             PrimaryButton(
                 text = if (payState.loading) "Procesando..." else "Confirmar pago",
-                enabled = !payState.loading,
+                enabled = !payState.loading && methodsState.methods.isNotEmpty(),
                 onClick = {
                     paymentVm.pay(
                         sessionId = sessionId,

@@ -119,7 +119,11 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoggedIn = { role ->
-                    if (role != "admin") activeSessionVm.loadActiveSession()
+                    if (role != "admin") {
+                        activeSessionVm.loadActiveSession()
+                        profileVm.refresh()
+                        homeVm.refresh()
+                    }
                     val destination = if (role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
                     navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
@@ -229,6 +233,7 @@ fun EparkNavHost(navController: NavHostController) {
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },
                 onBack = { navController.popBackStack() },
+                onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
             )
         }
