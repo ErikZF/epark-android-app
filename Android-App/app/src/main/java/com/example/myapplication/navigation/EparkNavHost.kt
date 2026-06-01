@@ -223,7 +223,8 @@ fun EparkNavHost(navController: NavHostController) {
                 sessionId = finalizedSessionId,
                 totalCost = finalizedCost,
                 duration = finalizedDuration,
-                onConfirm = { invoice ->
+                onConfirm = { actualCost, invoice ->
+                    finalizedCost = actualCost
                     finalizedInvoice = invoice
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },

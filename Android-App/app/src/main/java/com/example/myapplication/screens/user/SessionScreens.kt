@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -175,7 +176,7 @@ fun PaymentScreen(
     sessionId: Int,
     totalCost: Double,
     duration: String,
-    onConfirm: (invoiceNumber: String?) -> Unit,
+    onConfirm: (actualCost: Double, invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
     methodsVm: PaymentMethodsViewModel = viewModel(),
@@ -227,13 +228,14 @@ fun PaymentScreen(
                 onClick = {
                     paymentVm.pay(
                         sessionId = sessionId,
-                        amount = totalCost,
                         paymentMethodId = selectedId?.toIntOrNull(),
-                        onSuccess = { invoice -> onConfirm(invoice) },
+                        onSuccess = { actualCost, invoice -> onConfirm(actualCost, invoice) },
                     )
                 },
             )
-            SecondaryButton(text = "Regresar", onClick = onBack)
+            if (!payState.loading) {
+                SecondaryButton(text = "Regresar", onClick = onBack)
+            }
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -426,19 +428,37 @@ fun ActiveSessionScreen(
                         Spacer(Modifier.height(8.dp))
                     }
                     Spacer(Modifier.weight(1f))
+                    var showFinalizeDialog by remember { mutableStateOf(false) }
                     PrimaryButton(
                         text = if (uiState.finalizing) "Finalizando..." else "Finalizar y pagar",
-                        onClick = {
-                            vm.finalize { sessionId, cost, dur ->
-                                onFinalized(sessionId, cost, dur)
-                            }
-                        },
+                        onClick = { showFinalizeDialog = true },
                         enabled = !uiState.finalizing && !uiState.extending,
                     )
                     SecondaryButton(
                         text = "Extender sesión",
                         onClick = onExtend,
                     )
+                    if (showFinalizeDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showFinalizeDialog = false },
+                            title = { Text("¿Proceder al pago?") },
+                            text = { Text("Podrás revisar el monto y confirmar el pago en la siguiente pantalla. Puedes regresar si cambias de opinión.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showFinalizeDialog = false
+                                        vm.proceedToPayment { sessionId, cost, dur ->
+                                            onFinalized(sessionId, cost, dur)
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                ) { Text("Ir a pagar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showFinalizeDialog = false }) { Text("Cancelar") }
+                            },
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
                 }
             }

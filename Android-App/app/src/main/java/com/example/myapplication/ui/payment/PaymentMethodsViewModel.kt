@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.PaymentMethod
 import com.example.myapplication.data.repository.PaymentRepository
+import com.example.myapplication.data.repository.SessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,23 +17,26 @@ data class SessionPaymentUiState(
 )
 
 class SessionPaymentViewModel(
-    private val repo: PaymentRepository = PaymentRepository(),
+    private val payRepo: PaymentRepository = PaymentRepository(),
+    private val sessionRepo: SessionRepository = SessionRepository(),
 ) : ViewModel() {
     private val _state = MutableStateFlow(SessionPaymentUiState())
     val state: StateFlow<SessionPaymentUiState> = _state.asStateFlow()
 
     fun pay(
         sessionId: Int,
-        amount: Double,
         paymentMethodId: Int?,
-        onSuccess: (invoiceNumber: String?) -> Unit,
+        onSuccess: (actualCost: Double, invoiceNumber: String?) -> Unit,
     ) {
         _state.value = SessionPaymentUiState(loading = true)
         viewModelScope.launch {
             try {
-                val result = repo.pay(amount, "session", sessionId, paymentMethodId)
-                _state.value = SessionPaymentUiState(invoiceNumber = result.invoiceNumber)
-                onSuccess(result.invoiceNumber)
+                // 1. Finalizar la sesión → obtiene el costo real calculado por el servidor
+                val finalized = sessionRepo.finalize(sessionId)
+                // 2. Procesar el pago con el costo real
+                val payment = payRepo.pay(finalized.totalCost.toDouble(), "session", finalized.id, paymentMethodId)
+                _state.value = SessionPaymentUiState(invoiceNumber = payment.invoiceNumber)
+                onSuccess(finalized.totalCost.toDouble(), payment.invoiceNumber)
             } catch (e: Exception) {
                 _state.value = SessionPaymentUiState(error = "No se pudo procesar el pago. Intenta de nuevo.")
             }
