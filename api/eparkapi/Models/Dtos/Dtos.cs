@@ -5,6 +5,7 @@ public record RegisterRequest(
     string FullName,
     string Email,
     string Password,
+    string? NationalId,
     string? Phone,
     string? Plate,
     short? VehicleTypeId,
@@ -98,8 +99,7 @@ public record CreateSessionRequest(
     int VehicleId,
     int ZoneId,
     int SpaceNumber,
-    DateTime ScheduledStart,
-    DateTime ScheduledEnd);
+    DateTime ScheduledStart);
 
 public record ExtendSessionRequest(int AddedMinutes);
 

@@ -19,7 +19,10 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { message = "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character." });
 
             if (await db.Users.AnyAsync(u => u.Email == req.Email))
-                return Results.Conflict(new { message = "Email already registered." });
+                return Results.Conflict(new { message = "Correo ya registrado." });
+
+            if (!string.IsNullOrWhiteSpace(req.NationalId) && await db.Users.AnyAsync(u => u.NationalId == req.NationalId))
+                return Results.Conflict(new { message = "Cédula ya registrada." });
 
             var driverRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "driver");
             if (driverRole is null)
@@ -31,6 +34,7 @@ public static class AuthEndpoints
                 FullName = req.FullName,
                 Email = req.Email,
                 PasswordHash = req.Password,
+                NationalId = req.NationalId,
                 Phone = req.Phone
             };
             db.Users.Add(user);

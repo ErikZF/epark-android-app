@@ -131,12 +131,9 @@ public static class SessionEndpoints
             if (session.Status != SessionStatus.Active)
                 return Results.BadRequest(new { message = "Session is not active." });
 
+            // TotalCost is already correct: set at creation and incremented on each extension.
+            // Billing is based on the full reserved block, not actual time used.
             session.ActualEnd = DateTime.UtcNow;
-            // Bill for actual time used, capped at scheduledEnd
-            var billableEnd = session.ActualEnd.Value < session.ScheduledEnd
-                ? session.ActualEnd.Value
-                : session.ScheduledEnd;
-            session.TotalCost = CostFor(session.HourlyRate, billableEnd - session.ScheduledStart);
             session.Status = SessionStatus.Completed;
             await db.SaveChangesAsync();
             return Results.Ok(new FinalizeSessionResponse(session.Id, session.Status.ToString(), session.TotalCost));

@@ -35,10 +35,11 @@ class AuthRepository {
         fullName: String,
         email: String,
         password: String,
+        nationalId: String? = null,
         plate: String? = null,
     ): String {
         val auth = api.register(
-            RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, plate = plate)
+            RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
         )
         AuthState.set(auth)
         return auth.role
@@ -115,7 +116,7 @@ class SessionRepository {
     /** Creates a session and returns the new session ID. */
     suspend fun startSession(vehicleId: Int, zoneId: Int, spaceNumber: Int, startIso: String): Int {
         val response = api.createSession(
-            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso, startIso)
+            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso)
         )
         return response.id
     }

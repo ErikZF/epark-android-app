@@ -14,8 +14,11 @@ import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.home.HomeViewModel
+import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
+import com.example.myapplication.ui.profile.VehiclesViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
+import com.example.myapplication.ui.session.SessionConfigViewModel
 
 @Composable
 fun EparkNavHost(navController: NavHostController) {
@@ -34,10 +37,16 @@ fun EparkNavHost(navController: NavHostController) {
 
     // Scoped here so vehicle adds can trigger a profile refresh on back-navigation
     val profileVm: ProfileViewModel = viewModel()
+    // Scoped here so returning from ADD_PAYMENT triggers a methods refresh on PaymentScreen
+    val paymentMethodsVm: PaymentMethodsViewModel = viewModel()
     // Scoped here so zone edits/creates trigger a list refresh on return
     val adminZonesVm: AdminZonesViewModel = viewModel()
     // Scoped here so location/state survives tab navigation
     val homeVm: HomeViewModel = viewModel()
+    // Scoped here so SELECT_VEHICLE and SESSION_CONFIG share the same vehicle state
+    val sessionConfigVm: SessionConfigViewModel = viewModel()
+    // Scoped here so adding a vehicle from any flow refreshes the VEHICLES screen
+    val vehiclesVm: VehiclesViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -46,12 +55,24 @@ fun EparkNavHost(navController: NavHostController) {
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
+    // Refresh data whenever the user returns to screens that list live data
+    LaunchedEffect(currentRoute) {
+        when (currentRoute) {
+            Routes.PAYMENT -> paymentMethodsVm.refresh()
+            Routes.PAYMENT_METHODS -> paymentMethodsVm.refresh()
+            Routes.VEHICLES -> vehiclesVm.refresh()
+            Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
+            Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
+        }
+    }
+
     // Determine which bottom bar to show
     val residentRoutes = setOf(
-        Routes.USER_HOME, Routes.SESSION_CONFIG, Routes.PAYMENT,
+        Routes.USER_HOME, Routes.SESSION_CONFIG, Routes.SELECT_VEHICLE, Routes.PAYMENT,
         Routes.PAYMENT_SUCCESS, Routes.ACTIVE_SESSION, Routes.EXTEND_SESSION,
-        Routes.HISTORY, Routes.PROFILE, Routes.EDIT_PROFILE, Routes.ADD_VEHICLE,
-        Routes.PAYMENT_METHODS, Routes.ADD_PAYMENT, Routes.NOTIFICATIONS, Routes.PAY_FINE,
+        Routes.HISTORY, Routes.PROFILE, Routes.EDIT_PROFILE, Routes.VEHICLES,
+        Routes.ADD_VEHICLE, Routes.PAYMENT_METHODS, Routes.ADD_PAYMENT,
+        Routes.NOTIFICATIONS, Routes.PAY_FINE,
     )
     val adminRoutes = setOf(
         Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
@@ -185,15 +206,15 @@ fun EparkNavHost(navController: NavHostController) {
             SessionConfigScreen(
                 zone = zone,
                 onStartParking = {
-                    // After session is created, reload it and go to the active session screen
                     activeSessionVm.loadActiveSession()
                     navController.navigate(Routes.ACTIVE_SESSION) {
                         popUpTo(Routes.SESSION_CONFIG) { inclusive = true }
                     }
                 },
-                onSelectOtherVehicle = {},
+                onSelectOtherVehicle = { navController.navigate(Routes.SELECT_VEHICLE) },
                 onBack = { navController.popBackStack() },
                 bottomBar = residentBottomBar,
+                vm = sessionConfigVm,
             )
         }
 
@@ -237,6 +258,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
+                methodsVm = paymentMethodsVm,
             )
         }
 
@@ -270,7 +292,7 @@ fun EparkNavHost(navController: NavHostController) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
             ProfileScreen(
                 onEdit = { navController.navigate(Routes.EDIT_PROFILE) },
-                onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
+                onVehicles = { navController.navigate(Routes.VEHICLES) },
                 onPaymentMethods = { navController.navigate(Routes.PAYMENT_METHODS) },
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
@@ -295,12 +317,34 @@ fun EparkNavHost(navController: NavHostController) {
             )
         }
 
+        composable(Routes.VEHICLES) {
+            LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
+            VehiclesScreen(
+                onBack = { navController.popBackStack() },
+                onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
+                bottomBar = residentBottomBar,
+                vm = vehiclesVm,
+            )
+        }
+
+        composable(Routes.SELECT_VEHICLE) {
+            LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            SelectVehicleScreen(
+                onBack = { navController.popBackStack() },
+                onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
+                bottomBar = residentBottomBar,
+                vm = sessionConfigVm,
+            )
+        }
+
         composable(Routes.ADD_VEHICLE) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
             AddVehicleScreen(
                 onBack = { navController.popBackStack() },
                 onAdded = {
                     profileVm.refresh()
+                    vehiclesVm.refresh()
+                    sessionConfigVm.refresh()
                     navController.popBackStack()
                 },
                 bottomBar = residentBottomBar,
@@ -313,6 +357,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
+                vm = paymentMethodsVm,
             )
         }
 
@@ -320,7 +365,10 @@ fun EparkNavHost(navController: NavHostController) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
             AddPaymentScreen(
                 onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onSaved = {
+                    paymentMethodsVm.refresh()
+                    navController.popBackStack()
+                },
                 bottomBar = residentBottomBar,
             )
         }

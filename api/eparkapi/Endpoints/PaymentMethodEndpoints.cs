@@ -21,6 +21,9 @@ public static class PaymentMethodEndpoints
 
         app.MapPost("/api/payment-methods", async (CreatePaymentMethodRequest req, EparkDbContext db) =>
         {
+            if (await db.PaymentMethods.AnyAsync(p => p.UserId == req.UserId && p.Token == req.Token))
+                return Results.Conflict(new { message = "Esta tarjeta ya está registrada." });
+
             if (req.IsDefault)
             {
                 var existing = await db.PaymentMethods.Where(p => p.UserId == req.UserId && p.IsDefault).ToListAsync();

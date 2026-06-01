@@ -135,7 +135,7 @@ fun RegisterScreen(
                 }
                 PrimaryButton(
                     text = if (uiState.loading) "Creando cuenta..." else "Crear cuenta",
-                    onClick = { vm.register(name, email, password) { showSuccess = true } },
+                    onClick = { vm.register(name, cedula, email, password) { showSuccess = true } },
                     enabled = !uiState.loading,
                 )
                 Spacer(Modifier.height(24.dp))

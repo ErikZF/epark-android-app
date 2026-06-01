@@ -25,8 +25,5 @@ object StaticContent {
         NotificationItem("n2", "Multa emitida", "Se emitió una multa para la placa ABC-123 en Zona Las Ruinas.", "9:41 AM"),
     )
 
-    val adminAlerts = listOf(
-        AdminAlert("a1", "LOREM IPSUM", "Lorem ipsum dolor sit", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris lacinia ullamcorper leo, a ultrices purus venenatis sit amet.", "4min ago"),
-        AdminAlert("a2", "LOREM IPSUM", "Lorem ipsum dolor sit", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris lacinia ullamcorper leo, a ultrices purus venenatis sit amet. Donec porta elementum.", "4min ago"),
-    )
+    val adminAlerts = emptyList<AdminAlert>()
 }

@@ -540,7 +540,7 @@ fun AdminAlertsScreen(
                 }
             }
             item {
-                Text("Notificacón de alertas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text("Notificación de alertas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
             items(StaticContent.adminAlerts) { alert ->
                 AlertCard(alert.source, alert.title, alert.body, alert.time) { onAlertClick(alert.id) }
@@ -592,7 +592,12 @@ fun AdminAlertDetailScreen(
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
 ) {
-    val alert = StaticContent.adminAlerts.firstOrNull { it.id == alertId } ?: StaticContent.adminAlerts.first()
+    val alert = StaticContent.adminAlerts.firstOrNull { it.id == alertId }
+
+    if (alert == null) {
+        LaunchedEffect(Unit) { onBack() }
+        return
+    }
 
     Scaffold(topBar = { EparkTopBar("Alerta", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(

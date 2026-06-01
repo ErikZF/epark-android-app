@@ -14,6 +14,7 @@ object Routes {
     // User main
     const val USER_HOME = "user_home"
     const val SESSION_CONFIG = "session_config"
+    const val SELECT_VEHICLE = "select_vehicle"
     const val PAYMENT = "payment"
     const val PAYMENT_SUCCESS = "payment_success"
     const val ACTIVE_SESSION = "active_session"
@@ -23,6 +24,7 @@ object Routes {
     // User profile
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
+    const val VEHICLES = "vehicles"
     const val ADD_VEHICLE = "add_vehicle"
     const val PAYMENT_METHODS = "payment_methods"
     const val ADD_PAYMENT = "add_payment"

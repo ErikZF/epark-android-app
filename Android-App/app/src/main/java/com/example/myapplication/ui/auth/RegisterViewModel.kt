@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import retrofit2.HttpException
 
 data class RegisterUiState(
     val loading: Boolean = false,
@@ -20,8 +22,8 @@ class RegisterViewModel(
     private val _state = MutableStateFlow(RegisterUiState())
     val state: StateFlow<RegisterUiState> = _state.asStateFlow()
 
-    fun register(name: String, email: String, password: String, onSuccess: () -> Unit) {
-        if (name.isBlank() || email.isBlank() || password.isBlank()) {
+    fun register(name: String, cedula: String, email: String, password: String, onSuccess: () -> Unit) {
+        if (name.isBlank() || cedula.isBlank() || email.isBlank() || password.isBlank()) {
             _state.value = RegisterUiState(error = "Completa todos los campos.")
             return
         }
@@ -37,9 +39,14 @@ class RegisterViewModel(
         _state.value = RegisterUiState(loading = true)
         viewModelScope.launch {
             try {
-                repo.register(fullName = name, email = email, password = password)
+                repo.register(fullName = name, email = email, password = password, nationalId = cedula.trim())
                 _state.value = RegisterUiState()
                 onSuccess()
+            } catch (e: HttpException) {
+                val apiMessage = runCatching {
+                    e.response()?.errorBody()?.string()?.let { JSONObject(it).getString("message") }
+                }.getOrNull()
+                _state.value = RegisterUiState(error = apiMessage ?: "No se pudo crear la cuenta. Intenta de nuevo.")
             } catch (e: Exception) {
                 _state.value = RegisterUiState(error = "No se pudo crear la cuenta. Intenta de nuevo.")
             }

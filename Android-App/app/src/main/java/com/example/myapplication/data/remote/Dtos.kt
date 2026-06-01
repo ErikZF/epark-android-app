@@ -7,6 +7,7 @@ data class RegisterRequestDto(
     val fullName: String,
     val email: String,
     val password: String,
+    val nationalId: String? = null,
     val phone: String? = null,
     val plate: String? = null,
     val vehicleTypeId: Short? = null,
@@ -115,7 +116,6 @@ data class CreateSessionRequestDto(
     val zoneId: Int,
     val spaceNumber: Int,
     val scheduledStart: String,
-    val scheduledEnd: String,
 )
 
 data class CreateSessionResponseDto(val id: Int, val totalCost: Double)

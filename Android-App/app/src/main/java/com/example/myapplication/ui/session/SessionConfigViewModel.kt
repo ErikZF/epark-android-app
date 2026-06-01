@@ -19,6 +19,7 @@ import java.util.TimeZone
 
 data class SessionConfigUiState(
     val loading: Boolean = true,
+    val vehicles: List<Vehicle> = emptyList(),
     val currentVehicle: Vehicle? = null,
     val submitting: Boolean = false,
     val error: String? = null,
@@ -38,11 +39,19 @@ class SessionConfigViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = SessionConfigUiState(loading = false, currentVehicle = vehicleRepo.getVehicles().firstOrNull())
+                val vehicles = vehicleRepo.getVehicles()
+                val current = _state.value.currentVehicle
+                    ?.let { cur -> vehicles.find { it.id == cur.id } }
+                    ?: vehicles.firstOrNull()
+                _state.value = SessionConfigUiState(loading = false, vehicles = vehicles, currentVehicle = current)
             } catch (e: Exception) {
                 _state.value = SessionConfigUiState(loading = false, error = "No se pudo cargar el vehículo.")
             }
         }
+    }
+
+    fun selectVehicle(vehicle: Vehicle) {
+        _state.value = _state.value.copy(currentVehicle = vehicle)
     }
 
     /**
