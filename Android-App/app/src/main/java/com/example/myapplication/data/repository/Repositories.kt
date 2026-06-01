@@ -14,6 +14,7 @@ import com.example.myapplication.data.remote.CreateSessionRequestDto
 import com.example.myapplication.data.remote.CreateVehicleRequestDto
 import com.example.myapplication.data.remote.CreateZoneRequestDto
 import com.example.myapplication.data.remote.EparkApi
+import com.example.myapplication.data.remote.UpdateZoneRequestDto
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
 import com.example.myapplication.data.remote.FinalizeSessionResponseDto
 import com.example.myapplication.data.remote.LoginRequestDto
@@ -63,6 +64,27 @@ class ZoneRepository {
             longitude,
             totalSpots,
             hourlyRate
+        )
+    )
+
+    suspend fun updateZone(
+        id: Int,
+        name: String,
+        totalSpots: Int,
+        hourlyRate: Double,
+        openHour: Int,
+        closeHour: Int,
+        isActive: Boolean,
+    ) = api.updateZone(
+        id,
+        UpdateZoneRequestDto(
+            name = name,
+            description = null,
+            totalSpots = totalSpots,
+            hourlyRate = hourlyRate,
+            openHour = openHour,
+            closeHour = closeHour,
+            isActive = isActive,
         )
     )
 }

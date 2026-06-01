@@ -8,8 +8,6 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // Android emulator reaches the host machine (where the .NET API runs) via 10.0.2.2.
-    // For a physical device, replace with the host LAN IP.
     private const val BASE_URL = "http://10.0.2.2:5114/"
 
     val api: EparkApi by lazy {
