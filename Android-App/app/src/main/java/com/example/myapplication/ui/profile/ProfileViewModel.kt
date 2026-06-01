@@ -71,3 +71,29 @@ class ProfileViewModel(
         name.trim().split(" ").filter { it.isNotBlank() }.take(2)
             .joinToString("") { it.first().uppercase() }
 }
+
+data class VehiclesUiState(
+    val loading: Boolean = true,
+    val vehicles: List<Vehicle> = emptyList(),
+    val error: String? = null,
+)
+
+class VehiclesViewModel(
+    private val repo: VehicleRepository = VehicleRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(VehiclesUiState())
+    val state: StateFlow<VehiclesUiState> = _state.asStateFlow()
+
+    init { refresh() }
+
+    fun refresh() {
+        _state.value = _state.value.copy(loading = true, error = null)
+        viewModelScope.launch {
+            try {
+                _state.value = VehiclesUiState(loading = false, vehicles = repo.getVehicles())
+            } catch (e: Exception) {
+                _state.value = VehiclesUiState(loading = false, error = "No se pudieron cargar los vehículos.")
+            }
+        }
+    }
+}

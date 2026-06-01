@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -594,6 +596,59 @@ fun ExtendSessionScreen(
             )
             SecondaryButton(text = "Regresar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+fun SelectVehicleScreen(
+    onBack: () -> Unit,
+    onAddVehicle: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: SessionConfigViewModel = viewModel(),
+) {
+    val uiState by vm.state.collectAsState()
+
+    Scaffold(
+        topBar = { EparkTopBar("Seleccionar vehículo", onBack = onBack) },
+        bottomBar = bottomBar,
+        containerColor = AppBackground,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Elige el vehículo con el que iniciarás la sesión",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onAddVehicle,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                ) {
+                    Text("Agregar vehículo", fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            items(uiState.vehicles) { vehicle ->
+                VehicleCard(
+                    vehicle = vehicle,
+                    selected = vehicle.id == uiState.currentVehicle?.id,
+                    onClick = {
+                        vm.selectVehicle(vehicle)
+                        onBack()
+                    },
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
         }
     }
 }

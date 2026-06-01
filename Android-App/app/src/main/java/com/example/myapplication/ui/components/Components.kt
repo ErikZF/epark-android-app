@@ -386,24 +386,48 @@ fun AdminZoneCard(
 // ──────────────────────────── Vehicle card ───────────────────────────────────
 
 @Composable
-fun VehicleCard(vehicle: Vehicle, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+fun VehicleCard(
+    vehicle: Vehicle,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
+) {
+    val borderColor = if (selected) PrimaryGreen else BorderColor
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
+            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(32.dp))
+            Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(28.dp))
             Spacer(Modifier.width(12.dp))
-            Text(vehicle.plate, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(16.dp))
-            Text("${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(vehicle.plate, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text("${vehicle.brand} ${vehicle.model}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+            if (onDelete != null) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = TextMuted, modifier = Modifier.size(18.dp))
+                }
+            }
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryGreen),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = SurfaceWhite, modifier = Modifier.size(16.dp))
+                }
+            }
         }
     }
 }

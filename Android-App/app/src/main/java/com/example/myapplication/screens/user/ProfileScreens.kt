@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.StaticContent
+import com.example.myapplication.data.Vehicle
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.payment.AddPaymentMethodViewModel
 import java.util.Calendar
@@ -27,12 +28,13 @@ import com.example.myapplication.ui.auth.VehicleRegisterViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
+import com.example.myapplication.ui.profile.VehiclesViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun ProfileScreen(
     onEdit: () -> Unit,
-    onAddVehicle: () -> Unit,
+    onVehicles: () -> Unit,
     onPaymentMethods: () -> Unit,
     onNotifications: () -> Unit,
     onLogout: () -> Unit,
@@ -73,19 +75,6 @@ fun ProfileScreen(
                 }
             }
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Mis vehículos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    TextLink("+ Agregar", onClick = onAddVehicle)
-                }
-            }
-            items(uiState.vehicles) { vehicle ->
-                VehicleCard(vehicle = vehicle)
-            }
-            item {
                 var alertMinutes by remember { mutableStateOf(AlertPreferences.alertMinutes) }
                 var showAlertDialog by remember { mutableStateOf(false) }
 
@@ -96,6 +85,12 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column {
+                        MenuRow(
+                            icon = Icons.Outlined.DirectionsCar,
+                            label = "Mis vehículos",
+                            onClick = onVehicles,
+                        )
+                        HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                         MenuRow(
                             icon = Icons.Outlined.CreditCard,
                             label = "Método de pago",
@@ -242,6 +237,60 @@ fun EditProfileScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
 }
 
 @Composable
+fun VehiclesScreen(
+    onBack: () -> Unit,
+    onAddVehicle: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: VehiclesViewModel = viewModel(),
+) {
+    val uiState by vm.state.collectAsState()
+    val vehicles = remember { mutableStateListOf<Vehicle>() }
+    LaunchedEffect(uiState.vehicles) {
+        vehicles.clear()
+        vehicles.addAll(uiState.vehicles)
+    }
+
+    Scaffold(
+        topBar = { EparkTopBar("Mis vehículos", onBack = onBack) },
+        bottomBar = bottomBar,
+        containerColor = AppBackground,
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Administra los vehículos registrados en epark",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onAddVehicle,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                ) {
+                    Text("Agregar vehículo", fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+            items(vehicles) { vehicle ->
+                VehicleCard(
+                    vehicle = vehicle,
+                    onDelete = { vehicles.remove(vehicle) },
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+    }
+}
+
+@Composable
 fun AddVehicleScreen(
     onBack: () -> Unit,
     onAdded: () -> Unit,
@@ -255,6 +304,7 @@ fun AddVehicleScreen(
     val uiState by vm.state.collectAsState()
 
     Scaffold(
+        topBar = { EparkTopBar("Agregar vehículo", onBack = onBack) },
         containerColor = AppBackground,
         bottomBar = bottomBar,
     ) { padding ->
@@ -265,8 +315,7 @@ fun AddVehicleScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
         ) {
-            Spacer(Modifier.height(24.dp))
-            Text("Agregar Vehículo", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
             Text("Llene los datos para agregar nuevo vehículo", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Spacer(Modifier.height(24.dp))
             EparkTextField(value = plate, onValueChange = { plate = it }, placeholder = "Placa del Vehículo")
