@@ -66,7 +66,9 @@ data class Fine(
     val plate: String,
     val date: String,
     val time: String,
+    val reason: String,
     val amount: String,
+    val amountRaw: Double,
     val isPaid: Boolean,
 )
 

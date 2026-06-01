@@ -92,7 +92,9 @@ fun FineDto.toDomain(): Fine = Fine(
     plate = plate,
     date = issuedAt.take(10),
     time = issuedAt.drop(11).take(5),
+    reason = reason,
     amount = colones(amount),
+    amountRaw = amount,
     isPaid = status == "Paid",
 )
 

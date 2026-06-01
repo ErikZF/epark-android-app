@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.AlertPreferences
+import com.example.myapplication.data.Fine
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.Vehicle
 import com.example.myapplication.data.repository.AuthState
@@ -27,6 +28,7 @@ import com.example.myapplication.ui.payment.AddPaymentMethodViewModel
 import java.util.Calendar
 import com.example.myapplication.ui.auth.VehicleRegisterViewModel
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.payment.FinePaymentViewModel
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.profile.VehiclesViewModel
@@ -497,19 +499,22 @@ fun NotificationsScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
 
 @Composable
 fun PayFineScreen(
-    onConfirm: () -> Unit,
+    fine: Fine,
+    onConfirm: (invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
-    vm: PaymentMethodsViewModel = viewModel(),
+    methodsVm: PaymentMethodsViewModel = viewModel(),
+    payVm: FinePaymentViewModel = viewModel(),
 ) {
-    val uiState by vm.state.collectAsState()
+    val methodsState by methodsVm.state.collectAsState()
+    val payState by payVm.state.collectAsState()
     var selectedId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(uiState.methods) {
-        if (selectedId == null) selectedId = uiState.methods.firstOrNull()?.id
+    LaunchedEffect(methodsState.methods) {
+        if (selectedId == null) selectedId = methodsState.methods.firstOrNull()?.id
     }
 
     Scaffold(
-        topBar = { EparkTopBar("Pago de multas", onBack = onBack) },
+        topBar = { EparkTopBar("Pago de multa", onBack = onBack) },
         bottomBar = bottomBar,
         containerColor = AppBackground,
     ) { padding ->
@@ -522,18 +527,38 @@ fun PayFineScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            PaymentSummaryCard(total = "₡ 8.200", spaceNumber = "#0086", duration = "06:02")
+            FineSummaryCard(fine = fine)
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            uiState.methods.forEach { method ->
-                PaymentMethodCard(
-                    method = method,
-                    selected = method.id == selectedId,
-                    onSelect = { selectedId = method.id },
-                )
+            if (methodsState.methods.isEmpty() && !methodsState.loading) {
+                Text("No tienes ninguna tarjeta registrada.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            } else {
+                methodsState.methods.forEach { method ->
+                    PaymentMethodCard(
+                        method = method,
+                        selected = method.id == selectedId,
+                        onSelect = { selectedId = method.id },
+                    )
+                }
+            }
+            if (payState.error != null) {
+                ErrorBanner(payState.error!!)
             }
             Spacer(Modifier.height(8.dp))
-            PrimaryButton(text = "Confirmar pago", onClick = onConfirm)
-            SecondaryButton(text = "Regresar", onClick = onBack)
+            PrimaryButton(
+                text = if (payState.loading) "Procesando..." else "Confirmar pago",
+                enabled = !payState.loading && methodsState.methods.isNotEmpty(),
+                onClick = {
+                    payVm.pay(
+                        fineId = fine.id.toInt(),
+                        amount = fine.amountRaw,
+                        paymentMethodId = selectedId?.toIntOrNull(),
+                        onSuccess = { invoice -> onConfirm(invoice) },
+                    )
+                },
+            )
+            if (!payState.loading) {
+                SecondaryButton(text = "Regresar", onClick = onBack)
+            }
             Spacer(Modifier.height(16.dp))
         }
     }

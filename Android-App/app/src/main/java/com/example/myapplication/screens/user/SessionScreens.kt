@@ -303,6 +303,43 @@ fun PaymentSuccessScreen(
 }
 
 @Composable
+fun FinePaymentSuccessScreen(
+    zoneName: String,
+    reason: String,
+    totalPaid: String,
+    invoiceNumber: String? = null,
+    onBack: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+) {
+    Scaffold(
+        bottomBar = bottomBar,
+        containerColor = AppBackground,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            val rows = buildList {
+                add("Zona" to zoneName)
+                add("Motivo" to reason)
+                add("Total pagado" to totalPaid)
+                if (invoiceNumber != null) add("Comprobante" to invoiceNumber)
+            }
+            SuccessReceipt(
+                title = "¡Multa pagada!",
+                subtitle = "Tu comprobante está disponible en el historial",
+                rows = rows,
+            )
+            Spacer(Modifier.height(24.dp))
+            PrimaryButton(text = "Volver al historial", onClick = onBack)
+        }
+    }
+}
+
+@Composable
 fun ActiveSessionScreen(
     onFinalized: (sessionId: Int, totalCost: Double, duration: String) -> Unit,
     onExtend: () -> Unit,

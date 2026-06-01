@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
@@ -13,6 +14,7 @@ import com.example.myapplication.screens.user.*
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.history.HistoryViewModel
 import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
@@ -24,6 +26,10 @@ import com.example.myapplication.ui.session.SessionConfigViewModel
 fun EparkNavHost(navController: NavHostController) {
     // Shared mutable state across the nav graph
     var selectedZone by remember { mutableStateOf<ParkingZone?>(null) }
+
+    // Fine passed from History → PayFine → FinePaymentSuccess
+    var selectedFine by remember { mutableStateOf<Fine?>(null) }
+    var fineInvoice by remember { mutableStateOf<String?>(null) }
 
     // Finalized session data passed from ActiveSession → Payment → PaymentSuccess
     var finalizedSessionId by remember { mutableStateOf(-1) }
@@ -47,6 +53,8 @@ fun EparkNavHost(navController: NavHostController) {
     val sessionConfigVm: SessionConfigViewModel = viewModel()
     // Scoped here so adding a vehicle from any flow refreshes the VEHICLES screen
     val vehiclesVm: VehiclesViewModel = viewModel()
+    // Scoped here so fine payment can trigger a refresh on the history list
+    val historyVm: HistoryViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -63,6 +71,7 @@ fun EparkNavHost(navController: NavHostController) {
             Routes.VEHICLES -> vehiclesVm.refresh()
             Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
             Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
+            Routes.HISTORY -> historyVm.refresh()
         }
     }
 
@@ -72,7 +81,7 @@ fun EparkNavHost(navController: NavHostController) {
         Routes.PAYMENT_SUCCESS, Routes.ACTIVE_SESSION, Routes.EXTEND_SESSION,
         Routes.HISTORY, Routes.PROFILE, Routes.EDIT_PROFILE, Routes.VEHICLES,
         Routes.ADD_VEHICLE, Routes.PAYMENT_METHODS, Routes.ADD_PAYMENT,
-        Routes.NOTIFICATIONS, Routes.PAY_FINE,
+        Routes.NOTIFICATIONS, Routes.PAY_FINE, Routes.FINE_PAYMENT_SUCCESS,
     )
     val adminRoutes = setOf(
         Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
@@ -282,8 +291,12 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.HISTORY) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.HISTORY }
             HistoryScreen(
-                onPayFine = { navController.navigate(Routes.PAY_FINE) },
+                onPayFine = { fine ->
+                    selectedFine = fine
+                    navController.navigate(Routes.PAY_FINE)
+                },
                 bottomBar = residentBottomBar,
+                vm = historyVm,
             )
         }
 
@@ -381,15 +394,37 @@ fun EparkNavHost(navController: NavHostController) {
         }
 
         composable(Routes.PAY_FINE) {
-            PayFineScreen(
-                onConfirm = {
-                    navController.navigate(Routes.PAYMENT_SUCCESS) {
-                        popUpTo(Routes.HISTORY)
-                    }
-                },
-                onBack = { navController.popBackStack() },
-                bottomBar = residentBottomBar,
-            )
+            selectedFine?.let { fine ->
+                PayFineScreen(
+                    fine = fine,
+                    onConfirm = { invoice ->
+                        fineInvoice = invoice
+                        historyVm.refresh()
+                        navController.navigate(Routes.FINE_PAYMENT_SUCCESS) {
+                            popUpTo(Routes.HISTORY)
+                        }
+                    },
+                    onBack = { navController.popBackStack() },
+                    bottomBar = residentBottomBar,
+                )
+            }
+        }
+
+        composable(Routes.FINE_PAYMENT_SUCCESS) {
+            selectedFine?.let { fine ->
+                FinePaymentSuccessScreen(
+                    zoneName = fine.zoneName,
+                    reason = fine.reason,
+                    totalPaid = fine.amount,
+                    invoiceNumber = fineInvoice,
+                    onBack = {
+                        navController.navigate(Routes.HISTORY) {
+                            popUpTo(Routes.HISTORY) { inclusive = true }
+                        }
+                    },
+                    bottomBar = residentBottomBar,
+                )
+            }
         }
 
         // ── Admin ─────────────────────────────────────────────────────────

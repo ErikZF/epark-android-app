@@ -32,6 +32,7 @@ object Routes {
 
     // Fines
     const val PAY_FINE = "pay_fine"
+    const val FINE_PAYMENT_SUCCESS = "fine_payment_success"
 
     // Admin
     const val ADMIN_ZONES = "admin_zones"

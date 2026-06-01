@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using eparkapi.Data;
 using eparkapi.Models.Dtos;
 using eparkapi.Models.Entities;
@@ -8,29 +7,33 @@ namespace eparkapi.Endpoints;
 
 public static class FineEndpoints
 {
-    private static readonly Expression<Func<Fine, FineResponse>> Project =
-        f => new FineResponse(
-            f.Id, f.VehicleId, f.Vehicle.Plate, f.ZoneId, f.Zone.Name,
-            f.Reason, f.EvidenceUrl, f.Amount, f.Status.ToString(), f.IssuedAt, f.PaidAt);
+    // Status.ToString() cannot be translated to SQL with Npgsql PostgreSQL enums,
+    // so we project to an anonymous type first, then convert in memory.
+    private static async Task<List<FineResponse>> ProjectAsync(IQueryable<Fine> query) =>
+        (await query
+            .OrderByDescending(f => f.IssuedAt)
+            .Select(f => new {
+                f.Id, f.VehicleId, VehiclePlate = f.Vehicle.Plate, f.ZoneId,
+                ZoneName = f.Zone.Name, f.Reason, f.EvidenceUrl, f.Amount,
+                f.Status, f.IssuedAt, f.PaidAt,
+            })
+            .ToListAsync())
+        .Select(f => new FineResponse(
+            f.Id, f.VehicleId, f.VehiclePlate, f.ZoneId, f.ZoneName,
+            f.Reason, f.EvidenceUrl, f.Amount, f.Status.ToString(), f.IssuedAt, f.PaidAt))
+        .ToList();
 
     public static void MapFineEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/users/{userId:int}/fines", async (int userId, EparkDbContext db) =>
         {
-            var fines = await db.Fines
-                .Where(f => f.Vehicle.UserId == userId)
-                .OrderByDescending(f => f.IssuedAt)
-                .Select(Project)
-                .ToListAsync();
+            var fines = await ProjectAsync(db.Fines.Where(f => f.Vehicle.UserId == userId));
             return Results.Ok(fines);
         }).WithTags("Fines");
 
         app.MapGet("/api/fines", async (EparkDbContext db) =>
         {
-            var fines = await db.Fines
-                .OrderByDescending(f => f.IssuedAt)
-                .Select(Project)
-                .ToListAsync();
+            var fines = await ProjectAsync(db.Fines);
             return Results.Ok(fines);
         }).WithTags("Fines");
 

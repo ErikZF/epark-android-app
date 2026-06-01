@@ -513,7 +513,7 @@ fun ActivityRow(session: ParkingSession, modifier: Modifier = Modifier) {
 fun FineRow(
     fine: Fine,
     showPayButton: Boolean = false,
-    onPayClick: (() -> Unit)? = null,
+    onPayClick: ((Fine) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -541,7 +541,7 @@ fun FineRow(
             if (showPayButton && !fine.isPaid && onPayClick != null) {
                 Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = onPayClick,
+                    onClick = { onPayClick(fine) },
                     colors = ButtonDefaults.buttonColors(containerColor = PendingRed),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth().height(40.dp),
@@ -880,6 +880,45 @@ fun PaymentSummaryCard(total: String, spaceNumber: String, duration: String, mod
                 Text("$duration de uso", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
+    }
+}
+
+// ──────────────────────────── Fine summary card ──────────────────────────────
+
+@Composable
+fun FineSummaryCard(fine: Fine, modifier: Modifier = Modifier) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Total a pagar", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            Text(fine.amount, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = BorderColor)
+            Spacer(Modifier.height(12.dp))
+            FineDetailRow(label = "Zona", value = fine.zoneName)
+            FineDetailRow(label = "Espacio", value = fine.spaceNumber)
+            FineDetailRow(label = "Placa", value = fine.plate)
+            FineDetailRow(label = "Fecha", value = "${fine.date}  ${fine.time}")
+            FineDetailRow(label = "Motivo", value = fine.reason)
+        }
+    }
+}
+
+@Composable
+private fun FineDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, textAlign = TextAlign.End)
     }
 }
 
