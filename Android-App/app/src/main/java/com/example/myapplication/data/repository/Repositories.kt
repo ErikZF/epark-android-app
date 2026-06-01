@@ -115,7 +115,7 @@ class SessionRepository {
     /** Creates a session and returns the new session ID. */
     suspend fun startSession(vehicleId: Int, zoneId: Int, spaceNumber: Int, startIso: String): Int {
         val response = api.createSession(
-            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso, startIso)
+            CreateSessionRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, startIso)
         )
         return response.id
     }

@@ -115,7 +115,6 @@ data class CreateSessionRequestDto(
     val zoneId: Int,
     val spaceNumber: Int,
     val scheduledStart: String,
-    val scheduledEnd: String,
 )
 
 data class CreateSessionResponseDto(val id: Int, val totalCost: Double)

@@ -66,8 +66,7 @@ class ActiveSessionViewModel(
                 val elapsed = ((nowMs - session.scheduledStartMs) / 1000L).coerceAtLeast(0L)
                 val scheduledSeconds = (session.scheduledEndMs - session.scheduledStartMs) / 1000L
                 val remainingSeconds = (scheduledSeconds - elapsed).coerceAtLeast(0L)
-
-                val costColones = (session.hourlyRate * elapsed / 3600.0).toLong()
+                val costColones = (session.hourlyRate * scheduledSeconds / 3600.0).toLong()
                 val alertSeconds = (AlertPreferences.alertMinutes * 60).toLong()
                 val nearingEnd = remainingSeconds in 1..alertSeconds
 
@@ -107,9 +106,9 @@ class ActiveSessionViewModel(
      */
     fun proceedToPayment(onSuccess: (sessionId: Int, estimatedCost: Double, duration: String) -> Unit) {
         val session = _state.value.session ?: return
-        val elapsed = _state.value.elapsedSeconds
-        val estimatedCost = session.hourlyRate * elapsed / 3600.0
-        onSuccess(session.id, estimatedCost, formatElapsed(elapsed))
+        val scheduledSeconds = (session.scheduledEndMs - session.scheduledStartMs) / 1000L
+        val scheduledCost = session.hourlyRate * scheduledSeconds / 3600.0
+        onSuccess(session.id, scheduledCost, formatElapsed(scheduledSeconds))
     }
 
     /** Limpia el estado después del pago exitoso. */

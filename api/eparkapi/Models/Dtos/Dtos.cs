@@ -98,8 +98,7 @@ public record CreateSessionRequest(
     int VehicleId,
     int ZoneId,
     int SpaceNumber,
-    DateTime ScheduledStart,
-    DateTime ScheduledEnd);
+    DateTime ScheduledStart);
 
 public record ExtendSessionRequest(int AddedMinutes);
 
