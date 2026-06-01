@@ -116,6 +116,60 @@ class AdminAddZoneViewModel(
     }
 }
 
+data class AdminManageZoneUiState(
+    val loading: Boolean = false,
+    val error: String? = null,
+    val success: Boolean = false,
+)
+
+class AdminManageZoneViewModel(
+    private val repo: ZoneRepository = ZoneRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(AdminManageZoneUiState())
+    val state: StateFlow<AdminManageZoneUiState> = _state.asStateFlow()
+
+    fun save(
+        id: String,
+        name: String,
+        spacesStr: String,
+        rateStr: String,
+        openHourStr: String,
+        closeHourStr: String,
+        isActive: Boolean,
+    ) {
+        val spots = spacesStr.trim().toIntOrNull()
+        val rate = rateStr.trim().toDoubleOrNull()
+        val openHour = openHourStr.trim().toIntOrNull()
+        val closeHour = closeHourStr.trim().toIntOrNull()
+        val zoneId = id.toIntOrNull()
+
+        val error = when {
+            name.isBlank() -> "El nombre es requerido."
+            spots == null || spots <= 0 -> "Los espacios deben ser un número mayor a 0."
+            rate == null || rate <= 0 -> "La tarifa debe ser un valor mayor a 0."
+            openHour == null || openHour < 0 || openHour > 23 -> "Hora de apertura inválida (0-23)."
+            closeHour == null || closeHour < 1 || closeHour > 24 -> "Hora de cierre inválida (1-24)."
+            closeHour <= openHour -> "La hora de cierre debe ser mayor a la de apertura."
+            zoneId == null -> "ID de zona inválido."
+            else -> null
+        }
+        if (error != null) {
+            _state.value = AdminManageZoneUiState(error = error)
+            return
+        }
+
+        _state.value = AdminManageZoneUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                repo.updateZone(zoneId!!, name.trim(), spots!!, rate!!, openHour!!, closeHour!!, isActive)
+                _state.value = AdminManageZoneUiState(success = true)
+            } catch (e: Exception) {
+                _state.value = AdminManageZoneUiState(error = "No se pudo actualizar la zona.")
+            }
+        }
+    }
+}
+
 data class AdminFinesUiState(
     val loading: Boolean = true,
     val fines: List<Fine> = emptyList(),

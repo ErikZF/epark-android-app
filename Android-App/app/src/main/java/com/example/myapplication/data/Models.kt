@@ -15,6 +15,7 @@ data class ParkingZone(
     val openHour: Int = 6,
     val closeHour: Int = 22,
     val isActive: Boolean = true,
+    val hourlyRate: Double = 0.0,
 )
 
 data class ActiveSession(

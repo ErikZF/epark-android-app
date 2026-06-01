@@ -23,6 +23,7 @@ import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminAddZoneViewModel
 import com.example.myapplication.ui.admin.AdminFinesViewModel
+import com.example.myapplication.ui.admin.AdminManageZoneViewModel
 import com.example.myapplication.ui.admin.AdminReportsViewModel
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
@@ -161,19 +162,26 @@ fun AdminManageZoneScreen(
     onBack: () -> Unit,
     onConfirm: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: AdminManageZoneViewModel = viewModel(),
 ) {
-    var name by remember { mutableStateOf("Zona Norte") }
-    var spaces by remember { mutableStateOf("10") }
-    var rate by remember { mutableStateOf("1200") }
-    var hoursFrom by remember { mutableStateOf("10:00 am") }
-    var hoursTo by remember { mutableStateOf("23:00 pm") }
+    var name by remember { mutableStateOf(zone.name) }
+    var spaces by remember { mutableStateOf(zone.totalSpots.toString()) }
+    var rate by remember { mutableStateOf(zone.hourlyRate.toLong().toString()) }
+    var openHour by remember { mutableStateOf(zone.openHour.toString()) }
+    var closeHour by remember { mutableStateOf(zone.closeHour.toString()) }
+    var isActive by remember { mutableStateOf(zone.isActive) }
+
+    val uiState by vm.state.collectAsState()
+
+    LaunchedEffect(uiState.success) {
+        if (uiState.success) onConfirm()
+    }
 
     Scaffold(topBar = { EparkTopBar("Gestionar zona", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            // Zone info header card
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
@@ -193,11 +201,10 @@ fun AdminManageZoneScreen(
                         Text("Espacios: ${zone.totalSpots}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         Text(zone.rate, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     }
-                    StatusChip(if (zone.isActive) "Activa" else "Inactiva")
+                    StatusChip(if (isActive) "Activa" else "Inactiva")
                 }
             }
             Spacer(Modifier.height(16.dp))
-            // Edit form card
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
@@ -207,21 +214,38 @@ fun AdminManageZoneScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     LabeledField("Nombre", name) { name = it }
                     LabeledField("Espacios", spaces) { spaces = it }
-                    LabeledField("Tarifa/hr", rate) { rate = it }
-                    Text("Horario Desde", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    LabeledField("Tarifa/hr (₡)", rate) { rate = it }
+                    Text("Horario (hora en formato 0-23)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        EparkTextField(hoursFrom, { hoursFrom = it }, "10:00 am", Modifier.weight(1f))
-                        EparkTextField(hoursTo, { hoursTo = it }, "23:00 pm", Modifier.weight(1f))
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = {}) {
-                            Text("Desactivar/ Activar", color = TextSecondary)
+                        Column(Modifier.weight(1f)) {
+                            Text("Desde", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Spacer(Modifier.height(4.dp))
+                            EparkTextField(openHour, { openHour = it }, "6", Modifier.fillMaxWidth())
                         }
+                        Column(Modifier.weight(1f)) {
+                            Text("Hasta", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Spacer(Modifier.height(4.dp))
+                            EparkTextField(closeHour, { closeHour = it }, "22", Modifier.fillMaxWidth())
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Zona activa", style = MaterialTheme.typography.bodyMedium)
+                        Switch(checked = isActive, onCheckedChange = { isActive = it })
                     }
                 }
             }
+            if (uiState.error != null) {
+                Spacer(Modifier.height(8.dp))
+                ErrorBanner(uiState.error!!)
+            }
             Spacer(Modifier.height(24.dp))
-            PrimaryButton("Confirmar", onClick = onConfirm)
+            PrimaryButton(
+                text = if (uiState.loading) "Guardando..." else "Confirmar",
+                enabled = !uiState.loading,
+                onClick = {
+                    vm.save(zone.id, name, spaces, rate, openHour, closeHour, isActive)
+                },
+            )
             SecondaryButton("Cancelar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
         }

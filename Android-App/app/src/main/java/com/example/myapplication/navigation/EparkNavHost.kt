@@ -10,6 +10,7 @@ import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
+import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.profile.ProfileViewModel
 import com.example.myapplication.ui.session.ActiveSessionViewModel
@@ -30,6 +31,8 @@ fun EparkNavHost(navController: NavHostController) {
 
     // Scoped here so vehicle adds can trigger a profile refresh on back-navigation
     val profileVm: ProfileViewModel = viewModel()
+    // Scoped here so zone edits/creates trigger a list refresh on return
+    val adminZonesVm: AdminZonesViewModel = viewModel()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -318,6 +321,7 @@ fun EparkNavHost(navController: NavHostController) {
                 },
                 onAddZone = { navController.navigate(Routes.ADMIN_ADD_ZONE) },
                 bottomBar = adminBottomBar,
+                vm = adminZonesVm,
             )
         }
 
@@ -326,6 +330,7 @@ fun EparkNavHost(navController: NavHostController) {
             AdminAddZoneScreen(
                 onBack = { navController.popBackStack() },
                 onSaved = {
+                    adminZonesVm.refresh()
                     navController.navigate(Routes.ADMIN_ZONES) {
                         popUpTo(Routes.ADMIN_ZONES) { inclusive = true }
                     }
@@ -341,7 +346,10 @@ fun EparkNavHost(navController: NavHostController) {
             AdminManageZoneScreen(
                 zone = zone,
                 onBack = { navController.popBackStack() },
-                onConfirm = { navController.popBackStack() },
+                onConfirm = {
+                    adminZonesVm.refresh()
+                    navController.popBackStack()
+                },
                 bottomBar = adminBottomBar,
             )
         }
