@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import retrofit2.HttpException
 
 data class AddPaymentMethodUiState(
     val loading: Boolean = false,
@@ -57,6 +59,11 @@ class AddPaymentMethodViewModel(
                 repo.addMethod(brand, lastFour, expMonth, expYear, isDefault)
                 _state.value = AddPaymentMethodUiState(success = true)
                 onSuccess()
+            } catch (e: HttpException) {
+                val apiMessage = runCatching {
+                    e.response()?.errorBody()?.string()?.let { JSONObject(it).getString("message") }
+                }.getOrNull()
+                _state.value = AddPaymentMethodUiState(error = apiMessage ?: "No se pudo guardar la tarjeta.")
             } catch (e: Exception) {
                 _state.value = AddPaymentMethodUiState(error = "No se pudo guardar la tarjeta.")
             }

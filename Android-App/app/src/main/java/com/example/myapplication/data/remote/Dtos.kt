@@ -7,6 +7,7 @@ data class RegisterRequestDto(
     val fullName: String,
     val email: String,
     val password: String,
+    val nationalId: String? = null,
     val phone: String? = null,
     val plate: String? = null,
     val vehicleTypeId: Short? = null,

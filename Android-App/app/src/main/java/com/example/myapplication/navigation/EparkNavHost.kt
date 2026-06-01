@@ -59,6 +59,7 @@ fun EparkNavHost(navController: NavHostController) {
     LaunchedEffect(currentRoute) {
         when (currentRoute) {
             Routes.PAYMENT -> paymentMethodsVm.refresh()
+            Routes.PAYMENT_METHODS -> paymentMethodsVm.refresh()
             Routes.VEHICLES -> vehiclesVm.refresh()
             Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
             Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
@@ -356,6 +357,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onBack = { navController.popBackStack() },
                 onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                 bottomBar = residentBottomBar,
+                vm = paymentMethodsVm,
             )
         }
 
@@ -363,7 +365,10 @@ fun EparkNavHost(navController: NavHostController) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.PROFILE }
             AddPaymentScreen(
                 onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() },
+                onSaved = {
+                    paymentMethodsVm.refresh()
+                    navController.popBackStack()
+                },
                 bottomBar = residentBottomBar,
             )
         }

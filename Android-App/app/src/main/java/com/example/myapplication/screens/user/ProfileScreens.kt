@@ -1,6 +1,7 @@
 package com.example.myapplication.screens.user
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -404,7 +405,12 @@ fun AddPaymentScreen(
     vm: AddPaymentMethodViewModel = viewModel(),
 ) {
     var cardNumber by remember { mutableStateOf("") }
-    var expiry by remember { mutableStateOf("") }
+    var expiryMonth by remember { mutableStateOf<Int?>(null) }
+    var expiryYear by remember { mutableStateOf<Int?>(null) }
+    var showExpiryPicker by remember { mutableStateOf(false) }
+    val expiry = if (expiryMonth != null && expiryYear != null)
+        "%02d/%02d".format(expiryMonth, expiryYear!! % 100)
+    else ""
     var cvc by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
@@ -425,8 +431,28 @@ fun AddPaymentScreen(
             Spacer(Modifier.height(16.dp))
             EparkTextField(value = cardNumber, onValueChange = { cardNumber = it }, placeholder = "Número de tarjeta")
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EparkTextField(value = expiry, onValueChange = { expiry = it }, placeholder = "MM/AA", modifier = Modifier.weight(1f))
+                Box(modifier = Modifier.weight(1f)) {
+                    EparkTextField(
+                        value = expiry,
+                        onValueChange = {},
+                        placeholder = "MM/AA",
+                        enabled = false,
+                    )
+                    Box(modifier = Modifier.matchParentSize().clickable { showExpiryPicker = true })
+                }
                 EparkTextField(value = cvc, onValueChange = { cvc = it }, placeholder = "CVC", modifier = Modifier.weight(1f))
+            }
+            if (showExpiryPicker) {
+                MonthYearPickerDialog(
+                    initialMonth = expiryMonth,
+                    initialYear = expiryYear,
+                    onDismiss = { showExpiryPicker = false },
+                    onConfirm = { month, year ->
+                        expiryMonth = month
+                        expiryYear = year
+                        showExpiryPicker = false
+                    },
+                )
             }
             EparkTextField(value = holder, onValueChange = { holder = it }, placeholder = "Nombre del titular")
             uiState.error?.let {
@@ -511,4 +537,114 @@ fun PayFineScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MonthYearPickerDialog(
+    initialMonth: Int?,
+    initialYear: Int?,
+    onDismiss: () -> Unit,
+    onConfirm: (month: Int, year: Int) -> Unit,
+) {
+    val cal = Calendar.getInstance()
+    val nowMonth = cal.get(Calendar.MONTH) + 1
+    val nowYear = cal.get(Calendar.YEAR)
+
+    var pickedYear by remember { mutableStateOf(initialYear ?: nowYear) }
+    var pickedMonth by remember { mutableStateOf(initialMonth ?: nowMonth) }
+
+    val years = remember { (nowYear..nowYear + 20).toList() }
+    val months = remember(pickedYear) {
+        if (pickedYear == nowYear) (nowMonth..12).toList() else (1..12).toList()
+    }
+
+    LaunchedEffect(pickedYear) {
+        if (pickedYear == nowYear && pickedMonth < nowMonth) pickedMonth = nowMonth
+    }
+
+    var monthExpanded by remember { mutableStateOf(false) }
+    var yearExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        title = { Text("Fecha de vencimiento", fontWeight = FontWeight.SemiBold) },
+        text = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = monthExpanded,
+                    onExpandedChange = { monthExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = "%02d".format(pickedMonth),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Mes") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            unfocusedBorderColor = BorderColor,
+                        ),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = monthExpanded,
+                        onDismissRequest = { monthExpanded = false },
+                    ) {
+                        months.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Text("%02d".format(m)) },
+                                onClick = { pickedMonth = m; monthExpanded = false },
+                            )
+                        }
+                    }
+                }
+                ExposedDropdownMenuBox(
+                    expanded = yearExpanded,
+                    onExpandedChange = { yearExpanded = it },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    OutlinedTextField(
+                        value = pickedYear.toString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Año") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearExpanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryGreen,
+                            unfocusedBorderColor = BorderColor,
+                        ),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = yearExpanded,
+                        onDismissRequest = { yearExpanded = false },
+                    ) {
+                        years.forEach { y ->
+                            DropdownMenuItem(
+                                text = { Text(y.toString()) },
+                                onClick = { pickedYear = y; yearExpanded = false },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(pickedMonth, pickedYear) },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+            ) { Text("Aceptar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        },
+    )
 }

@@ -35,10 +35,11 @@ class AuthRepository {
         fullName: String,
         email: String,
         password: String,
+        nationalId: String? = null,
         plate: String? = null,
     ): String {
         val auth = api.register(
-            RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, plate = plate)
+            RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
         )
         AuthState.set(auth)
         return auth.role
