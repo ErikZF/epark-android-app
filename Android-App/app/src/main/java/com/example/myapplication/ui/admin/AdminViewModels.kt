@@ -46,6 +46,8 @@ data class AdminReportsUiState(
     val loading: Boolean = true,
     val report: AdminReportSummary? = null,
     val error: String? = null,
+    val fromDate: String = "",
+    val toDate: String = "",
 )
 
 class AdminReportsViewModel(
@@ -56,13 +58,23 @@ class AdminReportsViewModel(
 
     init { refresh() }
 
+    fun setFromDate(date: String) {
+        _state.value = _state.value.copy(fromDate = date)
+    }
+
+    fun setToDate(date: String) {
+        _state.value = _state.value.copy(toDate = date)
+    }
+
     fun refresh() {
+        val from = _state.value.fromDate.takeIf { it.isNotBlank() }
+        val to = _state.value.toDate.takeIf { it.isNotBlank() }
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = AdminReportsUiState(loading = false, report = repo.summary())
+                _state.value = _state.value.copy(loading = false, report = repo.summary(from, to))
             } catch (e: Exception) {
-                _state.value = AdminReportsUiState(loading = false, error = "No se pudo cargar el reporte.")
+                _state.value = _state.value.copy(loading = false, error = "No se pudo cargar el reporte.")
             }
         }
     }

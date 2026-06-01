@@ -77,5 +77,8 @@ interface EparkApi {
 
     // ── Reports ──
     @GET("api/admin/reports/summary")
-    suspend fun getReportSummary(): ReportSummaryDto
+    suspend fun getReportSummary(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): ReportSummaryDto
 }

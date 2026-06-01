@@ -158,5 +158,6 @@ class FineRepository {
 }
 
 class ReportRepository {
-    suspend fun summary(): AdminReportSummary = api.getReportSummary().toDomain()
+    suspend fun summary(from: String? = null, to: String? = null): AdminReportSummary =
+        api.getReportSummary(from, to).toDomain()
 }
