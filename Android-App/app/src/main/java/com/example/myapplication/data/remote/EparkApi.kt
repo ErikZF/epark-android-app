@@ -86,5 +86,6 @@ interface EparkApi {
     suspend fun getReportSummary(
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("municipalityId") municipalityId: Int? = null,
     ): ReportSummaryDto
 }
