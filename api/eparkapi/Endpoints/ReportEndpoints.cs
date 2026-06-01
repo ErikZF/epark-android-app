@@ -9,7 +9,7 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to) =>
+        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to, int? municipalityId = null) =>
         {
             DateTimeOffset? fromDate = null;
             DateTimeOffset? toDate   = null;
@@ -22,6 +22,12 @@ public static class ReportEndpoints
             var sessionsQuery = db.Sessions.AsQueryable();
             var paymentsQuery = db.Payments.Where(p => p.Status == PaymentStatus.Completed);
             var finesQuery    = db.Fines.AsQueryable();
+
+            if (municipalityId.HasValue)
+            {
+                sessionsQuery = sessionsQuery.Where(s => s.Zone.MunicipalityId == municipalityId.Value);
+                finesQuery    = finesQuery.Where(f => f.Zone.MunicipalityId == municipalityId.Value);
+            }
 
             if (fromDate.HasValue)
             {
@@ -36,13 +42,26 @@ public static class ReportEndpoints
                 finesQuery    = finesQuery.Where(f => f.IssuedAt <= toDate.Value);
             }
 
+            // For revenue: join date-filtered payments with municipality-filtered sessions
+            var municipalitySessions = municipalityId.HasValue
+                ? db.Sessions.Where(s => s.Zone.MunicipalityId == municipalityId.Value)
+                : db.Sessions.AsQueryable();
+
             var totalSessions = await sessionsQuery.CountAsync();
-            var revenue       = await paymentsQuery
-                .Where(p => p.ReferenceType == PaymentReference.Session)
-                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
-            var finesIssued   = await finesQuery.CountAsync();
-            var activeSpots   = await db.Sessions.CountAsync(s => s.Status == SessionStatus.Active);
-            var totalSpots    = await db.Zones.Where(z => z.IsActive).SumAsync(z => (int?)z.TotalSpots) ?? 0;
+            var revenue = await (
+                from p in paymentsQuery
+                where p.ReferenceType == PaymentReference.Session
+                join s in municipalitySessions on p.ReferenceId equals s.Id
+                select p.Amount
+            ).SumAsync(x => (decimal?)x) ?? 0m;
+            var finesIssued = await finesQuery.CountAsync();
+            var activeSpots = await db.Sessions
+                .Where(s => s.Status == SessionStatus.Active
+                         && (!municipalityId.HasValue || s.Zone.MunicipalityId == municipalityId.Value))
+                .CountAsync();
+            var totalSpots = await db.Zones
+                .Where(z => z.IsActive && (!municipalityId.HasValue || z.MunicipalityId == municipalityId.Value))
+                .SumAsync(z => (int?)z.TotalSpots) ?? 0;
 
             // Revenue breakdown per zone (only session payments)
             var revenueByZone = await (
