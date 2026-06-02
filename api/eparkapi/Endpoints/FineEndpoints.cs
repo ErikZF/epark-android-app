@@ -14,12 +14,12 @@ public static class FineEndpoints
             .OrderByDescending(f => f.IssuedAt)
             .Select(f => new {
                 f.Id, f.VehicleId, VehiclePlate = f.Vehicle.Plate, f.ZoneId,
-                ZoneName = f.Zone.Name, f.Reason, f.EvidenceUrl, f.Amount,
+                ZoneName = f.Zone.Name, f.SpaceNumber, f.Reason, f.EvidenceUrl, f.Amount,
                 f.Status, f.IssuedAt, f.PaidAt,
             })
             .ToListAsync())
         .Select(f => new FineResponse(
-            f.Id, f.VehicleId, f.VehiclePlate, f.ZoneId, f.ZoneName,
+            f.Id, f.VehicleId, f.VehiclePlate, f.ZoneId, f.ZoneName, f.SpaceNumber,
             f.Reason, f.EvidenceUrl, f.Amount, f.Status.ToString(), f.IssuedAt, f.PaidAt))
         .ToList();
 
@@ -42,12 +42,14 @@ public static class FineEndpoints
         app.MapPost("/api/fines", async (CreateFineRequest req, EparkDbContext db) =>
         {
             if (req.Amount <= 0) return Results.BadRequest(new { message = "amount must be positive." });
+            if (req.SpaceNumber <= 0) return Results.BadRequest(new { message = "spaceNumber must be positive." });
 
             var fine = new Fine
             {
                 IssuedBy = req.IssuedBy,
                 VehicleId = req.VehicleId,
                 ZoneId = req.ZoneId,
+                SpaceNumber = req.SpaceNumber,
                 Reason = req.Reason,
                 EvidenceUrl = req.EvidenceUrl,
                 Amount = req.Amount

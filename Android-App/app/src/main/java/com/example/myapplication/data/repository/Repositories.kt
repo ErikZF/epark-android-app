@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.ActiveSession
+import com.example.myapplication.data.AdminActionLog
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingSession
@@ -50,8 +51,8 @@ class AuthRepository {
 }
 
 class ZoneRepository {
-    suspend fun getZones(municipalityId: Int? = null): List<ParkingZone> =
-        api.getZones(municipalityId = municipalityId).map { it.toDomain() }
+    suspend fun getZones(municipalityId: Int? = null, includeInactive: Boolean = false): List<ParkingZone> =
+        api.getZones(municipalityId = municipalityId, includeInactive = includeInactive).map { it.toDomain() }
 
     suspend fun addZone(
         municipalityId: Int,
@@ -74,7 +75,8 @@ class ZoneRepository {
             hourlyRate,
             openHour,
             closeHour,
-        )
+        ),
+        adminId = AuthState.userId,
     )
 
     suspend fun updateZone(
@@ -95,7 +97,8 @@ class ZoneRepository {
             openHour = openHour,
             closeHour = closeHour,
             isActive = isActive,
-        )
+        ),
+        adminId = AuthState.userId,
     )
 }
 
@@ -177,14 +180,24 @@ class FineRepository {
 
     suspend fun getAllFines(municipalityId: Int? = null): List<Fine> = api.getAllFines(municipalityId).map { it.toDomain() }
 
-    suspend fun issueFine(vehicleId: Int, zoneId: Int, reason: String, amount: Double) {
+    suspend fun issueFine(vehicleId: Int, zoneId: Int, spaceNumber: Int, reason: String, amount: Double) {
         api.createFine(
-            CreateFineRequestDto(AuthState.userId, vehicleId, zoneId, reason, null, amount)
+            CreateFineRequestDto(AuthState.userId, vehicleId, zoneId, spaceNumber, reason, null, amount)
         )
     }
 }
 
 class ReportRepository {
     suspend fun summary(from: String? = null, to: String? = null, municipalityId: Int? = null): AdminReportSummary =
-        api.getReportSummary(from, to, municipalityId).toDomain()
+        api.getReportSummary(from, to, municipalityId, adminId = AuthState.userId).toDomain()
+}
+
+class AdminLogRepository {
+    suspend fun getLogs(limit: Int? = null): List<AdminActionLog> =
+        api.getAdminLogs(limit).map { it.toDomain() }
+}
+
+class AdminNotificationRepository {
+    suspend fun getNotifications(municipalityId: Int? = null): List<com.example.myapplication.data.AdminAlert> =
+        api.getAdminNotifications(municipalityId).map { it.toDomain() }
 }

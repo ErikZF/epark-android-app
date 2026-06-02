@@ -146,6 +146,7 @@ public record FineResponse(
     string Plate,
     int ZoneId,
     string ZoneName,
+    int SpaceNumber,
     string Reason,
     string? EvidenceUrl,
     decimal Amount,
@@ -157,6 +158,7 @@ public record CreateFineRequest(
     int IssuedBy,
     int VehicleId,
     int ZoneId,
+    int SpaceNumber,
     string Reason,
     string? EvidenceUrl,
     decimal Amount);
@@ -171,3 +173,24 @@ public record ReportSummaryResponse(
     int ActiveSpots,
     int TotalSpots,
     IEnumerable<ZoneRevenueResponse> RevenueByZone);
+
+// ── Admin notifications ──────────────────────────────
+// Derived live feed (no table): overdue active sessions + recently paid fines.
+public record AdminNotificationResponse(
+    string Id,
+    string Type,
+    int ReferenceId,
+    string Plate,
+    string ZoneName,
+    DateTime Timestamp,
+    decimal? Amount,
+    int? SpaceNumber);
+
+// ── Admin action log ─────────────────────────────────
+public record AdminActionLogResponse(
+    long Id,
+    int AdminId,
+    string AdminName,
+    string Action,
+    string? Details,
+    DateTime CreatedAt);

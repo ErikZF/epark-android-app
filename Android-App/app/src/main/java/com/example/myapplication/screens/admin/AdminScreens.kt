@@ -25,8 +25,10 @@ import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.admin.AdminAddZoneViewModel
+import com.example.myapplication.ui.admin.AdminAlertsViewModel
 import com.example.myapplication.ui.admin.AdminFinesViewModel
 import com.example.myapplication.ui.admin.AdminIssueFineViewModel
+import com.example.myapplication.ui.admin.AdminLogsViewModel
 import com.example.myapplication.ui.admin.AdminManageZoneViewModel
 import com.example.myapplication.ui.admin.AdminReportsViewModel
 import com.example.myapplication.ui.admin.AdminZonesViewModel
@@ -65,15 +67,13 @@ fun AdminZonesScreen(
                     StatusChip("Admin")
                 }
             }
-            item { SearchField(value = search, onValueChange = { search = it }, placeholder = "Buscar zona de parqueo") }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Zonas de parqueo", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    TextLink("+ Nueva zona", onClick = onAddZone)
+                    if (!uiState.loading) TextLink("+ Agregar zona", onClick = onAddZone)
                 }
             }
             items(zones) { zone ->
@@ -305,6 +305,7 @@ fun AdminManageZoneScreen(
 
 @Composable
 fun AdminReportsScreen(
+    onViewLogs: () -> Unit,
     bottomBar: @Composable () -> Unit,
     vm: AdminReportsViewModel = viewModel(),
 ) {
@@ -330,7 +331,10 @@ fun AdminReportsScreen(
         ) {
             item {
                 Spacer(Modifier.height(20.dp))
-                Text("Reportes", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Reportes", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                    TextLink("Bitácora", onClick = onViewLogs)
+                }
             }
             item {
                 Card(
@@ -419,6 +423,70 @@ fun AdminReportsScreen(
     }
 }
 
+// ─────────────────── Admin Action Log ─────────────────────────────────────
+
+@Composable
+fun AdminLogsScreen(
+    onBack: () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    vm: AdminLogsViewModel = viewModel(),
+) {
+    val uiState by vm.state.collectAsState()
+
+    Scaffold(topBar = { EparkTopBar("Bitácora de acciones", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Registro de todas las acciones realizadas por administradores.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
+            if (uiState.error != null) {
+                item { ErrorBanner(uiState.error!!) }
+            }
+            if (!uiState.loading && uiState.error == null && uiState.logs.isEmpty()) {
+                item {
+                    Text(
+                        "No hay acciones registradas aún.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted,
+                    )
+                }
+            }
+            items(uiState.logs) { log ->
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                    elevation = CardDefaults.cardElevation(1.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            StatusChip(log.action)
+                            Text("${log.date} ${log.time}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        }
+                        if (log.details.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(log.details, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                            Text(log.adminName, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+    }
+}
+
 // ─────────────────── Admin Fines ──────────────────────────────────────────
 
 @Composable
@@ -465,6 +533,7 @@ fun AdminIssueFineScreen(
     var plate by remember { mutableStateOf("") }
     var reason by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("5000") }
+    var spaceNumber by remember { mutableStateOf("") }
     var selectedZoneId by remember { mutableStateOf("") }
     var zoneMenuExpanded by remember { mutableStateOf(false) }
     val selectedZoneName = zones.firstOrNull { it.id == selectedZoneId }?.name ?: "Seleccionar zona"
@@ -504,6 +573,7 @@ fun AdminIssueFineScreen(
                         }
                     }
                     LabeledField("Motivo", reason) { reason = it }
+                    LabeledField("Espacio", spaceNumber) { spaceNumber = it.filter(Char::isDigit) }
                     LabeledField("Monto (₡)", amount) { amount = it }
                 }
             }
@@ -515,7 +585,7 @@ fun AdminIssueFineScreen(
             PrimaryButton(
                 text = if (uiState.loading) "Emitiendo..." else "Emitir multa",
                 enabled = !uiState.loading,
-                onClick = { vm.issue(plate, selectedZoneId, reason, amount) },
+                onClick = { vm.issue(plate, selectedZoneId, spaceNumber, reason, amount, zones.firstOrNull { it.id == selectedZoneId }?.totalSpots ?: 0) },
             )
             SecondaryButton("Cancelar", onClick = onBack)
             Spacer(Modifier.height(16.dp))
@@ -530,7 +600,10 @@ fun AdminAlertsScreen(
     onAlertClick: (String) -> Unit,
     onLogout: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: AdminAlertsViewModel,
 ) {
+    val uiState by vm.state.collectAsState()
+
     Scaffold(bottomBar = bottomBar, containerColor = AppBackground) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -557,14 +630,20 @@ fun AdminAlertsScreen(
             item {
                 Text("Notificación de alertas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
-            items(StaticContent.adminAlerts) { alert ->
-                AlertCard(alert.source, alert.title, alert.body, alert.time) { onAlertClick(alert.id) }
+            if (uiState.error != null) {
+                item { ErrorBanner(uiState.error!!) }
             }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    IconButton(onClick = {}) { Icon(Icons.Default.ArrowBack, "Anterior", tint = TextMuted) }
-                    IconButton(onClick = {}) { Icon(Icons.Default.ArrowForward, "Siguiente", tint = TextMuted) }
+            if (!uiState.loading && uiState.error == null && uiState.alerts.isEmpty()) {
+                item {
+                    Text(
+                        "No hay alertas por el momento.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted,
+                    )
                 }
+            }
+            items(uiState.alerts) { alert ->
+                AlertCard(alert.source, alert.title, alert.body, alert.time) { onAlertClick(alert.id) }
             }
             item {
                 DangerButton("Cerrar Sesión", onClick = onLogout)
@@ -606,11 +685,22 @@ fun AdminAlertDetailScreen(
     alertId: String,
     onBack: () -> Unit,
     bottomBar: @Composable () -> Unit,
+    vm: AdminAlertsViewModel,
 ) {
-    val alert = StaticContent.adminAlerts.firstOrNull { it.id == alertId }
+    val uiState by vm.state.collectAsState()
+    val alert = uiState.alerts.firstOrNull { it.id == alertId }
 
+    // The feed may still be loading (e.g. opened via a notification deep link).
     if (alert == null) {
-        LaunchedEffect(Unit) { onBack() }
+        Scaffold(topBar = { EparkTopBar("Alerta", onBack = onBack) }, bottomBar = bottomBar, containerColor = AppBackground) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                if (uiState.loading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text("Esta alerta ya no está disponible.", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                }
+            }
+        }
         return
     }
 
@@ -637,14 +727,27 @@ fun AdminAlertDetailScreen(
                         Spacer(Modifier.height(12.dp))
                         Text(alert.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
-                        Text(alert.body.repeat(3), style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text(alert.body, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                         Spacer(Modifier.height(16.dp))
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = TextMuted)
-                        }
+                        DetailRow("Placa", alert.plate)
+                        DetailRow("Zona", alert.zoneName)
+                        alert.spaceNumber?.let { DetailRow("Espacio", it) }
+                        alert.amount?.let { DetailRow("Monto", it) }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    if (value.isBlank()) return
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }

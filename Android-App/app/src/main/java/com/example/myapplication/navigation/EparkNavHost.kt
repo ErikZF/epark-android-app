@@ -12,15 +12,20 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.Fine
+import com.example.myapplication.data.HistoryCache
+import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.SessionAlarmScheduler
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.data.repository.AuthState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.myapplication.ui.admin.AdminAlertsViewModel
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.history.HistoryViewModel
@@ -32,7 +37,14 @@ import com.example.myapplication.ui.session.ActiveSessionViewModel
 import com.example.myapplication.ui.session.SessionConfigViewModel
 
 @Composable
-fun EparkNavHost(navController: NavHostController) {
+fun EparkNavHost(
+    navController: NavHostController,
+    // Deep-link target from a tapped notification (e.g. "admin_alert_detail"), with an
+    // optional alert id. Set by MainActivity; consumed once the user is on an admin route.
+    deepLinkTarget: String? = null,
+    deepLinkAlertId: String? = null,
+    onDeepLinkHandled: () -> Unit = {},
+) {
     // Shared mutable state across the nav graph
     var selectedZone by remember { mutableStateOf<ParkingZone?>(null) }
 
@@ -56,6 +68,9 @@ fun EparkNavHost(navController: NavHostController) {
     val paymentMethodsVm: PaymentMethodsViewModel = viewModel()
     // Scoped here so zone edits/creates trigger a list refresh on return
     val adminZonesVm: AdminZonesViewModel = viewModel()
+    // Scoped here so the alerts list is shared between the list, the detail screen,
+    // and the app-wide polling effect that raises system notifications.
+    val adminAlertsVm: AdminAlertsViewModel = viewModel()
     // Scoped here so location/state survives tab navigation
     val homeVm: HomeViewModel = viewModel()
     // Scoped here so SELECT_VEHICLE and SESSION_CONFIG share the same vehicle state
@@ -83,7 +98,57 @@ fun EparkNavHost(navController: NavHostController) {
             Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
             Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
             Routes.HISTORY -> historyVm.refresh()
+            Routes.ADMIN_ZONES -> adminZonesVm.refresh()
+            Routes.ADMIN_ALERTS -> adminAlertsVm.refresh()
         }
+    }
+
+    val context = LocalContext.current
+    val alertsState by adminAlertsVm.state.collectAsState()
+    // Avoids spamming the tray with the historical backlog present on first load.
+    var alertsSeeded by remember { mutableStateOf(false) }
+
+    // Poll the admin notification feed while an admin is logged in.
+    LaunchedEffect(AuthState.role) {
+        if (AuthState.role != "admin") return@LaunchedEffect
+        while (true) {
+            adminAlertsVm.refresh()
+            delay(30_000)
+        }
+    }
+
+    // Raise a local notification for each feed item not previously surfaced. The first
+    // populated feed only seeds the "seen" set so the backlog doesn't flood the tray.
+    LaunchedEffect(alertsState.alerts, alertsState.loading) {
+        if (AuthState.role != "admin" || alertsState.loading) return@LaunchedEffect
+        val alerts = alertsState.alerts
+        val seen = AlertPreferences.seenAlertIds
+        if (!alertsSeeded) {
+            AlertPreferences.seenAlertIds = seen + alerts.map { it.id }
+            alertsSeeded = true
+            return@LaunchedEffect
+        }
+        val newOnes = alerts.filter { it.id !in seen }
+        newOnes.forEach { NotificationHelper.showAdminAlert(context, it.title, it.body, it.id) }
+        if (newOnes.isNotEmpty()) AlertPreferences.seenAlertIds = seen + newOnes.map { it.id }
+    }
+
+    // Consume a notification deep link once splash routing has completed and the role
+    // is known. onDeepLinkHandled clears it so route changes don't re-trigger navigation.
+    LaunchedEffect(deepLinkTarget, deepLinkAlertId, currentRoute) {
+        val target = deepLinkTarget ?: return@LaunchedEffect
+        if (currentRoute == null || currentRoute == Routes.SPLASH || currentRoute == Routes.LOGIN) return@LaunchedEffect
+        var handled = true
+        when (target) {
+            "admin_alert_detail" -> if (AuthState.role == "admin") {
+                if (!deepLinkAlertId.isNullOrBlank()) navController.navigate(Routes.adminAlertDetail(deepLinkAlertId))
+                else navController.navigate(Routes.ADMIN_ALERTS)
+            } else handled = false
+            "admin_alerts" -> if (AuthState.role == "admin") navController.navigate(Routes.ADMIN_ALERTS) else handled = false
+            "active_session" -> if (AuthState.role != "admin") navController.navigate(Routes.ACTIVE_SESSION) else handled = false
+            else -> handled = false
+        }
+        if (handled) onDeepLinkHandled()
     }
 
     // Determine which bottom bar to show
@@ -95,7 +160,7 @@ fun EparkNavHost(navController: NavHostController) {
         Routes.NOTIFICATIONS, Routes.PAY_FINE, Routes.FINE_PAYMENT_SUCCESS,
     )
     val adminRoutes = setOf(
-        Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
+        Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_LOGS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
         Routes.ADMIN_ADD_ZONE, Routes.ADMIN_ALERT_DETAIL, Routes.ADMIN_ISSUE_FINE,
     ) + setOf(Routes.ADMIN_MANAGE_ZONE.substringBefore("{"))
 
@@ -351,6 +416,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onLogout = {
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
+                    HistoryCache.clear()
                     activeSessionVm.clearSession()
                     profileVm.clear()
                     homeVm.selectMunicipality(null)
@@ -513,7 +579,18 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.ADMIN_REPORTS) {
             LaunchedEffect(Unit) { adminTab = AdminTab.REPORTS }
-            AdminReportsScreen(bottomBar = adminBottomBar)
+            AdminReportsScreen(
+                onViewLogs = { navController.navigate(Routes.ADMIN_LOGS) },
+                bottomBar = adminBottomBar,
+            )
+        }
+
+        composable(Routes.ADMIN_LOGS) {
+            LaunchedEffect(Unit) { adminTab = AdminTab.REPORTS }
+            AdminLogsScreen(
+                onBack = { navController.popBackStack() },
+                bottomBar = adminBottomBar,
+            )
         }
 
         composable(Routes.ADMIN_FINES) {
@@ -546,11 +623,13 @@ fun EparkNavHost(navController: NavHostController) {
                 onLogout = {
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
+                    HistoryCache.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
                 bottomBar = adminBottomBar,
+                vm = adminAlertsVm,
             )
         }
 
@@ -561,6 +640,7 @@ fun EparkNavHost(navController: NavHostController) {
                 alertId = alertId,
                 onBack = { navController.popBackStack() },
                 bottomBar = adminBottomBar,
+                vm = adminAlertsVm,
             )
         }
     }

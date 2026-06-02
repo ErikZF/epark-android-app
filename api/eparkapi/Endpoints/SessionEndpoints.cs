@@ -52,7 +52,10 @@ public static class SessionEndpoints
                 ScheduledEnd = scheduledEnd,
                 HourlyRate = zone.HourlyRate,
                 TotalCost = CostFor(zone.HourlyRate, scheduledEnd - start),
-                Status = SessionStatus.Active
+                Status = SessionStatus.Active,
+                // Lock the zone's current rate to this session. Later zone rate
+                // changes apply only to new sessions, never this one (req. 3.2).
+                Rate = new SessionRate { HourlyRate = zone.HourlyRate }
             };
             db.Sessions.Add(session);
             await db.SaveChangesAsync();

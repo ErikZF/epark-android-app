@@ -52,13 +52,17 @@ object NotificationHelper {
         NotificationManagerCompat.from(context).notify(ID_SESSION_EXPIRY, notification)
     }
 
-    fun showAdminAlert(context: Context, title: String, body: String) {
+    fun showAdminAlert(context: Context, title: String, body: String, alertId: String) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("navigate_to", "admin_alerts")
+            putExtra("navigate_to", "admin_alert_detail")
+            putExtra("alert_id", alertId)
         }
+        // Distinct requestCode + notification id per alert so concurrent alerts don't
+        // overwrite each other's pending intent or tray entry.
+        val notifId = ID_ADMIN_ALERT + (alertId.hashCode() and 0xFFFF)
         val pending = PendingIntent.getActivity(
-            context, 1, intent,
+            context, notifId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ADMIN)
@@ -70,6 +74,6 @@ object NotificationHelper {
             .setContentIntent(pending)
             .build()
 
-        NotificationManagerCompat.from(context).notify(ID_ADMIN_ALERT, notification)
+        NotificationManagerCompat.from(context).notify(notifId, notification)
     }
 }

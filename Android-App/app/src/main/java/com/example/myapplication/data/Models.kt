@@ -88,6 +88,13 @@ data class AdminAlert(
     val title: String,
     val body: String,
     val time: String,
+    // "session_overdue" | "fine_paid"
+    val type: String = "",
+    val referenceId: Int = 0,
+    val plate: String = "",
+    val zoneName: String = "",
+    val amount: String? = null,
+    val spaceNumber: String? = null,
 )
 
 data class ZoneRevenue(val zoneName: String, val revenue: String, val sessions: Int)
@@ -99,4 +106,13 @@ data class AdminReportSummary(
     val activeSpots: String,
     val date: String,
     val revenueByZone: List<ZoneRevenue> = emptyList(),
+)
+
+data class AdminActionLog(
+    val id: String,
+    val adminName: String,
+    val action: String,
+    val details: String,
+    val date: String,
+    val time: String,
 )

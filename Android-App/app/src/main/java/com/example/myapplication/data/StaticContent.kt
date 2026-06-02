@@ -24,6 +24,4 @@ object StaticContent {
         NotificationItem("n1", "Sesión por vencer", "Tu sesión en Zona Las Ruinas vence en 10 minutos.", "9:41 AM"),
         NotificationItem("n2", "Multa emitida", "Se emitió una multa para la placa ABC-123 en Zona Las Ruinas.", "9:41 AM"),
     )
-
-    val adminAlerts = emptyList<AdminAlert>()
 }

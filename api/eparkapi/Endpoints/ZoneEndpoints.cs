@@ -46,7 +46,7 @@ public static class ZoneEndpoints
                 : Results.Ok(ToResponse(row.Zone, row.Municipality, row.Active));
         });
 
-        group.MapPost("/", async (CreateZoneRequest req, EparkDbContext db) =>
+        group.MapPost("/", async (CreateZoneRequest req, EparkDbContext db, int? adminId) =>
         {
             var zone = new Zone
             {
@@ -61,11 +61,12 @@ public static class ZoneEndpoints
                 CloseHour = req.CloseHour,
             };
             db.Zones.Add(zone);
+            AdminAudit.Log(db, adminId ?? 0, "zone.create", $"Creó la zona '{zone.Name}'");
             await db.SaveChangesAsync();
             return Results.Created($"/api/zones/{zone.Id}", new { zone.Id });
         });
 
-        group.MapPut("/{id:int}", async (int id, UpdateZoneRequest req, EparkDbContext db) =>
+        group.MapPut("/{id:int}", async (int id, UpdateZoneRequest req, EparkDbContext db, int? adminId) =>
         {
             var zone = await db.Zones.FindAsync(id);
             if (zone is null) return Results.NotFound();
@@ -77,6 +78,7 @@ public static class ZoneEndpoints
             zone.OpenHour = req.OpenHour;
             zone.CloseHour = req.CloseHour;
             zone.IsActive = req.IsActive;
+            AdminAudit.Log(db, adminId ?? 0, "zone.update", $"Actualizó la zona '{zone.Name}' (#{zone.Id})");
             await db.SaveChangesAsync();
             return Results.NoContent();
         });

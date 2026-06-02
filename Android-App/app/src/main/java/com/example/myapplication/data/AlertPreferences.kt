@@ -13,4 +13,11 @@ object AlertPreferences {
     var alertMinutes: Int
         get() = prefs.getInt("alert_minutes", 10)
         set(value) { prefs.edit().putInt("alert_minutes", value).apply() }
+
+    // IDs of admin notifications already surfaced as a system notification, so each
+    // derived item raises a tray notification at most once across polls. The getter
+    // returns a defensive copy: SharedPreferences may hand back a shared instance.
+    var seenAlertIds: Set<String>
+        get() = prefs.getStringSet("seen_alert_ids", emptySet())?.toSet() ?: emptySet()
+        set(value) { prefs.edit().putStringSet("seen_alert_ids", value).apply() }
 }

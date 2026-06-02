@@ -9,7 +9,7 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to, int? municipalityId) =>
+        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to, int? municipalityId, int? adminId) =>
         {
             DateTimeOffset? fromDate = null;
             DateTimeOffset? toDate   = null;
@@ -64,6 +64,16 @@ public static class ReportEndpoints
                 orderby g.Sum(x => x.Amount) descending
                 select new ZoneRevenueResponse(g.Key, g.Sum(x => x.Amount), g.Count())
             ).ToListAsync();
+
+            var range = (fromDate, toDate) switch
+            {
+                ({ }, { }) => $" ({from} a {to})",
+                ({ }, null) => $" (desde {from})",
+                (null, { }) => $" (hasta {to})",
+                _ => "",
+            };
+            AdminAudit.Log(db, adminId ?? 0, "report.view", $"Consultó el reporte de ingresos{range}");
+            await db.SaveChangesAsync();
 
             return Results.Ok(new ReportSummaryResponse(
                 totalSessions, revenue, finesIssued, activeSpots, totalSpots, revenueByZone));
