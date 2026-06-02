@@ -306,6 +306,7 @@ fun PaymentSuccessScreen(
 @Composable
 fun FinePaymentSuccessScreen(
     zoneName: String,
+    spaceNumber: String,
     reason: String,
     totalPaid: String,
     invoiceNumber: String? = null,
@@ -325,6 +326,7 @@ fun FinePaymentSuccessScreen(
         ) {
             val rows = buildList {
                 add("Zona" to zoneName)
+                add("Espacio" to spaceNumber)
                 add("Motivo" to reason)
                 add("Total pagado" to totalPaid)
                 if (invoiceNumber != null) add("Comprobante" to invoiceNumber)

@@ -48,8 +48,11 @@ class ProfileViewModel(
                     initials = initialsOf(AuthState.fullName),
                     vehicles = vehicles,
                     sessionsCount = sessions.size,
-                    paidCount = sessions.count { it.status == "Pagado" },
-                    finesCount = fines.size,
+                    paidCount = sessions.count { 
+                        val s = it.status.lowercase()
+                        s != "activa" && s != "active" 
+                    },
+                    finesCount = fines.count { !it.isPaid },
                 )
             } catch (e: Exception) {
                 _state.value = ProfileUiState(

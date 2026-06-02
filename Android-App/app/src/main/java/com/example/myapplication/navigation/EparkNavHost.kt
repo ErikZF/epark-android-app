@@ -98,6 +98,7 @@ fun EparkNavHost(
             Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
             Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
             Routes.HISTORY -> historyVm.refresh()
+            Routes.PROFILE -> profileVm.refresh()
             Routes.ADMIN_ZONES -> adminZonesVm.refresh()
             Routes.ADMIN_ALERTS -> adminAlertsVm.refresh()
         }
@@ -367,6 +368,8 @@ fun EparkNavHost(
                     // La sesión terminó: cancelamos la alarma de vencimiento pendiente.
                     SessionAlarmScheduler.cancel(paymentContext)
                     activeSessionVm.clearSession()
+                    profileVm.refresh()
+                    historyVm.refresh()
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },
                 onBack = { navController.popBackStack() },
@@ -507,6 +510,7 @@ fun EparkNavHost(
                     onConfirm = { invoice ->
                         fineInvoice = invoice
                         historyVm.refresh()
+                        profileVm.refresh()
                         navController.navigate(Routes.FINE_PAYMENT_SUCCESS) {
                             popUpTo(Routes.HISTORY)
                         }
@@ -523,6 +527,7 @@ fun EparkNavHost(
             selectedFine?.let { fine ->
                 FinePaymentSuccessScreen(
                     zoneName = fine.zoneName,
+                    spaceNumber = fine.spaceNumber,
                     reason = fine.reason,
                     totalPaid = fine.amount,
                     invoiceNumber = fineInvoice,
