@@ -512,7 +512,9 @@ fun EparkNavHost(
                         }
                     },
                     onBack = { navController.popBackStack() },
+                    onAddCard = { navController.navigate(Routes.ADD_PAYMENT) },
                     bottomBar = residentBottomBar,
+                    methodsVm = paymentMethodsVm,
                 )
             }
         }

@@ -502,6 +502,7 @@ fun PayFineScreen(
     fine: Fine,
     onConfirm: (invoiceNumber: String?) -> Unit,
     onBack: () -> Unit,
+    onAddCard: () -> Unit,
     bottomBar: @Composable () -> Unit,
     methodsVm: PaymentMethodsViewModel = viewModel(),
     payVm: FinePaymentViewModel = viewModel(),
@@ -530,7 +531,22 @@ fun PayFineScreen(
             FineSummaryCard(fine = fine)
             Text("Método de pago", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             if (methodsState.methods.isEmpty() && !methodsState.loading) {
-                Text("No tienes ninguna tarjeta registrada.", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                    elevation = CardDefaults.cardElevation(1.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(Icons.Default.CreditCard, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                        Text("No tienes ninguna tarjeta registrada", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                        PrimaryButton(text = "+ Agregar tarjeta", onClick = onAddCard)
+                    }
+                }
             } else {
                 methodsState.methods.forEach { method ->
                     PaymentMethodCard(
