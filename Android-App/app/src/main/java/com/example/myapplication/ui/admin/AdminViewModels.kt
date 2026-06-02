@@ -72,6 +72,7 @@ class AdminReportsViewModel(
     fun refresh() {
         val from = _state.value.fromDate.takeIf { it.isNotBlank() }
         val to = _state.value.toDate.takeIf { it.isNotBlank() }
+        val municipalityId = AuthState.municipalityId.takeIf { it > 0 }
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {

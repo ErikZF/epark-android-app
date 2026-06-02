@@ -26,6 +26,12 @@ public static class ReportEndpoints
                 .Where(f => municipalityId == null || f.Zone.MunicipalityId == municipalityId)
                 .AsQueryable();
 
+            if (municipalityId.HasValue)
+            {
+                sessionsQuery = sessionsQuery.Where(s => s.Zone.MunicipalityId == municipalityId.Value);
+                finesQuery    = finesQuery.Where(f => f.Zone.MunicipalityId == municipalityId.Value);
+            }
+
             if (fromDate.HasValue)
             {
                 sessionsQuery = sessionsQuery.Where(s => s.ScheduledStart >= fromDate.Value);
