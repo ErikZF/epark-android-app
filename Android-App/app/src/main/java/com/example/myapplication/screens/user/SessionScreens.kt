@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.SessionAlarmScheduler
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.payment.SessionPaymentViewModel
@@ -350,12 +351,27 @@ fun ActiveSessionScreen(
     val session = uiState.session
     val context = LocalContext.current
 
-    // Disparar notificación local cuando la sesión está por vencer (solo una vez por transición)
+    // Notificación fuera del ciclo de vida: programamos una alarma del sistema para
+    // `fin - alertMinutes`, de modo que dispare aunque la app esté cerrada. Se reprograma
+    // si la sesión cambia (p. ej. al extenderla, que actualiza scheduledEndMs).
+    LaunchedEffect(session?.id, session?.scheduledEndMs) {
+        session?.let {
+            SessionAlarmScheduler.schedule(
+                context = context,
+                scheduledEndMs = it.scheduledEndMs,
+                alertMinutes = AlertPreferences.alertMinutes,
+                zoneName = it.zoneName,
+            )
+        }
+    }
+
+    // Notificación in-app cuando la sesión está por vencer y la pantalla está visible
+    // (solo una vez por transición). Comparte el mismo id que la alarma, así no se duplica.
     var notificationSent by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.nearingEnd) {
         if (uiState.nearingEnd && !notificationSent) {
             notificationSent = true
-            NotificationHelper.showSessionExpiry(context, AlertPreferences.alertMinutes)
+            NotificationHelper.showSessionExpiry(context, AlertPreferences.alertMinutes, session?.zoneName)
         } else if (!uiState.nearingEnd) {
             notificationSent = false
         }
@@ -598,7 +614,7 @@ fun ExtendSessionScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "La zona cierra a las ${session?.zoneCloseHour ?: 22}:00 UTC. " +
+                        "La zona cierra a las ${session?.zoneCloseHour ?: 22}:00 (hora local). " +
                             "Si la extensión excede ese límite, se ajustará automáticamente.",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,

@@ -61,6 +61,8 @@ class ZoneRepository {
         longitude: Double,
         totalSpots: Int,
         hourlyRate: Double,
+        openHour: Int,
+        closeHour: Int,
     ) = api.createZone(
         CreateZoneRequestDto(
             municipalityId,
@@ -69,7 +71,9 @@ class ZoneRepository {
             latitude,
             longitude,
             totalSpots,
-            hourlyRate
+            hourlyRate,
+            openHour,
+            closeHour,
         )
     )
 
@@ -171,7 +175,7 @@ class FineRepository {
     suspend fun getUserFines(userId: Int = AuthState.userId): List<Fine> =
         api.getUserFines(userId).map { it.toDomain() }
 
-    suspend fun getAllFines(): List<Fine> = api.getAllFines().map { it.toDomain() }
+    suspend fun getAllFines(municipalityId: Int? = null): List<Fine> = api.getAllFines(municipalityId).map { it.toDomain() }
 
     suspend fun issueFine(vehicleId: Int, zoneId: Int, reason: String, amount: Double) {
         api.createFine(
@@ -181,6 +185,6 @@ class FineRepository {
 }
 
 class ReportRepository {
-    suspend fun summary(from: String? = null, to: String? = null): AdminReportSummary =
-        api.getReportSummary(from, to).toDomain()
+    suspend fun summary(from: String? = null, to: String? = null, municipalityId: Int? = null): AdminReportSummary =
+        api.getReportSummary(from, to, municipalityId).toDomain()
 }

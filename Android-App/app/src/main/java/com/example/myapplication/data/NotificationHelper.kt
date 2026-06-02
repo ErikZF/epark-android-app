@@ -30,7 +30,7 @@ object NotificationHelper {
         )
     }
 
-    fun showSessionExpiry(context: Context, minutesLeft: Int) {
+    fun showSessionExpiry(context: Context, minutesLeft: Int, zoneName: String? = null) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("navigate_to", "active_session")
@@ -39,10 +39,11 @@ object NotificationHelper {
             context, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val zoneSuffix = if (!zoneName.isNullOrBlank()) " en $zoneName" else ""
         val notification = NotificationCompat.Builder(context, CHANNEL_SESSION)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("⏱ Sesión por vencer")
-            .setContentText("Tu parqueo vence en $minutesLeft minuto${if (minutesLeft != 1) "s" else ""}. Extiende o finaliza tu sesión.")
+            .setContentText("Tu parqueo$zoneSuffix vence en $minutesLeft minuto${if (minutesLeft != 1) "s" else ""}. Extiende o finaliza tu sesión.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(pending)

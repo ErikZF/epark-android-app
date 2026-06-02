@@ -56,12 +56,24 @@ private fun parseIsoMs(iso: String): Long = runCatching {
     isoFormat.parse(iso.trimEnd('Z'))?.time ?: 0L
 }.getOrDefault(0L)
 
+// API timestamps are UTC ISO strings; show them in the device's local time.
+private val localDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+private val localTimeFormat = SimpleDateFormat("HH:mm", Locale.US)
+
+private fun localDate(iso: String): String = runCatching {
+    isoFormat.parse(iso.trimEnd('Z'))?.let { localDateFormat.format(it) }
+}.getOrNull() ?: iso.take(10)
+
+private fun localTime(iso: String): String = runCatching {
+    isoFormat.parse(iso.trimEnd('Z'))?.let { localTimeFormat.format(it) }
+}.getOrNull() ?: iso.drop(11).take(5)
+
 fun SessionDto.toDomain(): ParkingSession = ParkingSession(
     id = id.toString(),
     zoneName = zoneName,
     spaceNumber = "#%04d".format(spaceNumber),
     plate = plate,
-    date = scheduledStart.take(10),
+    date = localDate(scheduledStart),
     duration = "",
     total = colones(totalCost),
     status = when (status) {
@@ -90,8 +102,8 @@ fun FineDto.toDomain(): Fine = Fine(
     zoneName = zoneName,
     spaceNumber = spaceNumber?.let { "#%04d".format(it) } ?: "—",
     plate = plate,
-    date = issuedAt.take(10),
-    time = issuedAt.drop(11).take(5),
+    date = localDate(issuedAt),
+    time = localTime(issuedAt),
     reason = reason,
     amount = colones(amount),
     amountRaw = amount,

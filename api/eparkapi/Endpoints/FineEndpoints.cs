@@ -31,9 +31,11 @@ public static class FineEndpoints
             return Results.Ok(fines);
         }).WithTags("Fines");
 
-        app.MapGet("/api/fines", async (EparkDbContext db) =>
+        app.MapGet("/api/fines", async (EparkDbContext db, int? municipalityId) =>
         {
-            var fines = await ProjectAsync(db.Fines);
+            var query = db.Fines
+                .Where(f => municipalityId == null || f.Zone.MunicipalityId == municipalityId);
+            var fines = await ProjectAsync(query);
             return Results.Ok(fines);
         }).WithTags("Fines");
 

@@ -75,7 +75,7 @@ class AdminReportsViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = _state.value.copy(loading = false, report = repo.summary(from, to))
+                _state.value = _state.value.copy(loading = false, report = repo.summary(from, to, AuthState.municipalityId.takeIf { it > 0 }))
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, error = "No se pudo cargar el reporte.")
             }
@@ -103,11 +103,15 @@ class AdminAddZoneViewModel(
         rateStr: String,
         latStr: String,
         lonStr: String,
+        openHourStr: String,
+        closeHourStr: String,
     ) {
         val spots = spacesStr.trim().toIntOrNull()
         val hrRate = rateStr.trim().toDoubleOrNull()
         val lat = latStr.trim().toDoubleOrNull()
         val lon = lonStr.trim().toDoubleOrNull()
+        val openHour = openHourStr.trim().toIntOrNull()
+        val closeHour = closeHourStr.trim().toIntOrNull()
 
         val error = when {
             name.isBlank() -> "El nombre es requerido."
@@ -115,6 +119,9 @@ class AdminAddZoneViewModel(
             hrRate == null || hrRate <= 0 -> "La tarifa debe ser un valor mayor a 0."
             lat == null || lat < -90.0 || lat > 90.0 -> "Latitud inválida (debe estar entre -90 y 90)."
             lon == null || lon < -180.0 || lon > 180.0 -> "Longitud inválida (debe estar entre -180 y 180)."
+            openHour == null || openHour < 0 || openHour > 23 -> "Hora de apertura inválida (0-23)."
+            closeHour == null || closeHour < 1 || closeHour > 24 -> "Hora de cierre inválida (1-24)."
+            closeHour <= openHour -> "La hora de cierre debe ser mayor a la de apertura."
             else -> null
         }
         if (error != null) {
@@ -125,7 +132,7 @@ class AdminAddZoneViewModel(
         _state.value = AdminAddZoneUiState(loading = true)
         viewModelScope.launch {
             try {
-                repo.addZone(municipalityId, name, description.takeIf { it.isNotBlank() }, lat!!, lon!!, spots!!, hrRate!!)
+                repo.addZone(municipalityId, name, description.takeIf { it.isNotBlank() }, lat!!, lon!!, spots!!, hrRate!!, openHour!!, closeHour!!)
                 _state.value = AdminAddZoneUiState(success = true)
             } catch (e: Exception) {
                 _state.value = AdminAddZoneUiState(error = "No se pudo crear la zona.")
@@ -249,7 +256,7 @@ class AdminFinesViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                _state.value = AdminFinesUiState(loading = false, fines = repo.getAllFines())
+                _state.value = AdminFinesUiState(loading = false, fines = repo.getAllFines(AuthState.municipalityId.takeIf { it > 0 }))
             } catch (e: Exception) {
                 _state.value = AdminFinesUiState(loading = false, error = "No se pudieron cargar las multas.")
             }

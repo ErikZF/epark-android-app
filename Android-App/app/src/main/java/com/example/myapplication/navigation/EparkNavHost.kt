@@ -6,6 +6,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -14,6 +15,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.SessionAlarmScheduler
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
@@ -289,6 +291,7 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.PAYMENT) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            val paymentContext = LocalContext.current
             PaymentScreen(
                 sessionId = finalizedSessionId,
                 totalCost = finalizedCost,
@@ -296,6 +299,8 @@ fun EparkNavHost(navController: NavHostController) {
                 onConfirm = { actualCost, invoice ->
                     finalizedCost = actualCost
                     finalizedInvoice = invoice
+                    // La sesión terminó: cancelamos la alarma de vencimiento pendiente.
+                    SessionAlarmScheduler.cancel(paymentContext)
                     activeSessionVm.clearSession()
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },

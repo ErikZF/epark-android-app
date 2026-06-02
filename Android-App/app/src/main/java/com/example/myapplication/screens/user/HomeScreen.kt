@@ -45,15 +45,28 @@ fun HomeScreen(
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
+    // Tracks what to tell the user about geolocation.
+    var locationStatus by remember { mutableStateOf(LocationStatus.REQUESTING) }
+
+    // High-accuracy fresh fix so "nearby" reflects the device's actual position.
+    fun requestLocation() {
+        locationStatus = LocationStatus.REQUESTING
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    vm.updateLocation(location.latitude, location.longitude)
+                    locationStatus = LocationStatus.ACTIVE
+                } else {
+                    locationStatus = LocationStatus.UNAVAILABLE
+                }
+            }
+            .addOnFailureListener { locationStatus = LocationStatus.UNAVAILABLE }
+    }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                .addOnSuccessListener { location ->
-                    location?.let { vm.updateLocation(it.latitude, it.longitude) }
-                }
-        }
+        if (granted) requestLocation() else locationStatus = LocationStatus.DENIED
     }
 
     LaunchedEffect(Unit) {
@@ -61,10 +74,7 @@ fun HomeScreen(
             context, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
         if (hasPermission) {
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                .addOnSuccessListener { location ->
-                    location?.let { vm.updateLocation(it.latitude, it.longitude) }
-                }
+            requestLocation()
         } else {
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
@@ -151,6 +161,15 @@ fun HomeScreen(
             }
             item {
                 Text("Zonas cercanas", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                LocationStatusRow(
+                    status = locationStatus,
+                    lat = uiState.userLat,
+                    lon = uiState.userLon,
+                    onEnableClick = {
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    },
+                )
             }
             if (uiState.loading) {
                 item {
@@ -170,6 +189,54 @@ fun HomeScreen(
                 ZoneCard(zone = zone, distance = distanceLabel, onClick = { onZoneClick(zone) })
             }
             item { Spacer(Modifier.height(8.dp)) }
+        }
+    }
+}
+
+private enum class LocationStatus { REQUESTING, ACTIVE, DENIED, UNAVAILABLE }
+
+@Composable
+private fun LocationStatusRow(
+    status: LocationStatus,
+    lat: Double?,
+    lon: Double?,
+    onEnableClick: () -> Unit,
+) {
+    when {
+        status == LocationStatus.ACTIVE && lat != null && lon != null -> {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.MyLocation, contentDescription = null, tint = PrimaryGreen, modifier = Modifier.size(16.dp))
+                Text(
+                    "Ordenadas por cercanía · ${"%.5f".format(lat)}, ${"%.5f".format(lon)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PrimaryGreen,
+                )
+            }
+        }
+        status == LocationStatus.REQUESTING -> {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.LocationSearching, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Text("Obteniendo tu ubicación…", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
+        }
+        else -> {
+            // DENIED or UNAVAILABLE: explain and let the user retry.
+            val message = if (status == LocationStatus.DENIED) {
+                "Activa la ubicación para ordenar las zonas por cercanía"
+            } else {
+                "No se pudo obtener tu ubicación"
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.LocationOff, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Text(message, style = MaterialTheme.typography.bodySmall, color = TextSecondary, modifier = Modifier.weight(1f))
+                Text(
+                    "Activar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = PrimaryGreen,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable(onClick = onEnableClick),
+                )
+            }
         }
     }
 }

@@ -76,7 +76,7 @@ interface EparkApi {
     suspend fun getUserFines(@Path("userId") userId: Int): List<FineDto>
 
     @GET("api/fines")
-    suspend fun getAllFines(): List<FineDto>
+    suspend fun getAllFines(@Query("municipalityId") municipalityId: Int? = null): List<FineDto>
 
     @POST("api/fines")
     suspend fun createFine(@Body body: CreateFineRequestDto)
@@ -86,5 +86,6 @@ interface EparkApi {
     suspend fun getReportSummary(
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("municipalityId") municipalityId: Int? = null,
     ): ReportSummaryDto
 }

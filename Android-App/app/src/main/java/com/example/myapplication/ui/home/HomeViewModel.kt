@@ -19,23 +19,28 @@ data class HomeUiState(
     val userLon: Double? = null,
     val error: String? = null,
 ) {
+    /** True once we have a device fix and can order zones by real proximity. */
+    val hasLocation: Boolean get() = userLat != null && userLon != null
+
     val zones: List<ParkingZone>
         get() {
             val filtered = if (selectedMunicipality == null) allZones
                            else allZones.filter { it.municipalityName == selectedMunicipality }
-            return if (userLat != null && userLon != null) {
-                filtered.sortedBy { zone ->
-                    val result = FloatArray(1)
-                    Location.distanceBetween(userLat, userLon, zone.latitude, zone.longitude, result)
-                    result[0]
-                }
+            return if (hasLocation) {
+                // Zones with real coordinates first, each ordered by distance; the rest last.
+                filtered.sortedWith(
+                    compareBy(
+                        { !it.hasCoordinates },
+                        { distanceTo(it) ?: Float.MAX_VALUE },
+                    )
+                )
             } else filtered
         }
 
     fun distanceTo(zone: ParkingZone): Float? {
-        if (userLat == null || userLon == null) return null
+        if (userLat == null || userLon == null || !zone.hasCoordinates) return null
         val result = FloatArray(1)
-        Location.distanceBetween(userLat, userLon, zone.latitude, zone.longitude, result)
+        Location.distanceBetween(userLat!!, userLon!!, zone.latitude, zone.longitude, result)
         return result[0]
     }
 }
