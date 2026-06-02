@@ -28,10 +28,10 @@ interface EparkApi {
     suspend fun getZone(@Path("id") id: Int): ZoneDto
 
     @POST("api/zones")
-    suspend fun createZone(@Body body: CreateZoneRequestDto)
+    suspend fun createZone(@Body body: CreateZoneRequestDto, @Query("adminId") adminId: Int)
 
     @PUT("api/zones/{id}")
-    suspend fun updateZone(@Path("id") id: Int, @Body body: UpdateZoneRequestDto)
+    suspend fun updateZone(@Path("id") id: Int, @Body body: UpdateZoneRequestDto, @Query("adminId") adminId: Int)
 
     // ── Vehicles ──
     @GET("api/users/{userId}/vehicles")
@@ -87,5 +87,14 @@ interface EparkApi {
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
         @Query("municipalityId") municipalityId: Int? = null,
+        @Query("adminId") adminId: Int? = null,
     ): ReportSummaryDto
+
+    // ── Admin action log ──
+    @GET("api/admin/logs")
+    suspend fun getAdminLogs(@Query("limit") limit: Int? = null): List<AdminActionLogDto>
+
+    // ── Admin notifications ──
+    @GET("api/admin/notifications")
+    suspend fun getAdminNotifications(@Query("municipalityId") municipalityId: Int? = null): List<AdminNotificationDto>
 }

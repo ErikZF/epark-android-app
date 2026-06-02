@@ -109,6 +109,17 @@ public class Session
 
     public Zone Zone { get; set; } = null!;
     public Vehicle Vehicle { get; set; } = null!;
+    public SessionRate? Rate { get; set; }
+}
+
+// Rate locked to a session at creation. Zone rate changes apply only to new
+// sessions; an active session keeps the rate captured here (requirement 3.2).
+public class SessionRate
+{
+    public int Id { get; set; }
+    public int SessionId { get; set; }
+    public decimal HourlyRate { get; set; }
+    public DateTime LockedAt { get; set; }
 }
 
 public class SessionExtension
@@ -152,6 +163,7 @@ public class Fine
     public int IssuedBy { get; set; }
     public int VehicleId { get; set; }
     public int ZoneId { get; set; }
+    public int SpaceNumber { get; set; }
     public string Reason { get; set; } = null!;
     public string? EvidenceUrl { get; set; }
     public decimal Amount { get; set; }
@@ -162,4 +174,15 @@ public class Fine
 
     public Vehicle Vehicle { get; set; } = null!;
     public Zone Zone { get; set; } = null!;
+}
+
+public class AdminActionLog
+{
+    public long Id { get; set; }
+    public int AdminId { get; set; }
+    public string Action { get; set; } = null!;
+    public string? Details { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public User Admin { get; set; } = null!;
 }

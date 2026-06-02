@@ -189,6 +189,7 @@ data class CreateFineRequestDto(
     val issuedBy: Int,
     val vehicleId: Int,
     val zoneId: Int,
+    val spaceNumber: Int,
     val reason: String,
     val evidenceUrl: String?,
     val amount: Double,
@@ -208,4 +209,26 @@ data class ReportSummaryDto(
     val activeSpots: Int,
     val totalSpots: Int,
     val revenueByZone: List<ZoneRevenueDto> = emptyList(),
+)
+
+// ── Admin notifications ──────────────────────────────
+data class AdminNotificationDto(
+    val id: String,
+    val type: String,
+    val referenceId: Int,
+    val plate: String,
+    val zoneName: String,
+    val timestamp: String,
+    val amount: Double? = null,
+    val spaceNumber: Int? = null,
+)
+
+// ── Admin action log ─────────────────────────────────
+data class AdminActionLogDto(
+    val id: Long,
+    val adminId: Int,
+    val adminName: String,
+    val action: String,
+    val details: String?,
+    val createdAt: String,
 )

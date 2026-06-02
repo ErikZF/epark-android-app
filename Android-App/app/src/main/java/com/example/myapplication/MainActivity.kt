@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.AlertPreferences
@@ -23,6 +27,10 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* permission result handled silently */ }
 
+    // Deep link (navigate_to + alert_id) carried by the intent that launched/resumed us.
+    // Driven into EparkNavHost, which consumes it once the user is on a logged-in route.
+    private var deepLink by mutableStateOf<Pair<String, String?>?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AlertPreferences.init(this)
@@ -35,12 +43,31 @@ class MainActivity : ComponentActivity() {
         ) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        deepLink = readDeepLink(intent)
         enableEdgeToEdge()
         setContent {
             EparkTheme {
                 val navController = rememberNavController()
-                EparkNavHost(navController = navController)
+                val link = deepLink
+                EparkNavHost(
+                    navController = navController,
+                    deepLinkTarget = link?.first,
+                    deepLinkAlertId = link?.second,
+                    onDeepLinkHandled = { deepLink = null },
+                )
             }
         }
+    }
+
+    // Activity is SINGLE_TOP: a notification tapped while we're already running arrives here.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readDeepLink(intent)?.let { deepLink = it }
+    }
+
+    private fun readDeepLink(intent: Intent?): Pair<String, String?>? {
+        val target = intent?.getStringExtra("navigate_to") ?: return null
+        return target to intent.getStringExtra("alert_id")
     }
 }

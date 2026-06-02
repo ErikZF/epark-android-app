@@ -32,6 +32,7 @@ CREATE TABLE users (
     email            VARCHAR(255) NOT NULL UNIQUE,
     password_hash    VARCHAR(255) NOT NULL,
     phone            VARCHAR(20),
+    national_id      VARCHAR(20) UNIQUE,
     avatar_url       TEXT,
     is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -146,6 +147,21 @@ CREATE TABLE session_extensions (
 CREATE INDEX idx_session_extensions_session ON session_extensions(session_id);
 
 -- ─────────────────────────────────────────────
+-- 9.5 SESSION RATES
+-- Locks the hourly rate applied to a session at creation time.
+-- Rate changes on a zone apply only to NEW sessions; an active session
+-- keeps the rate snapshotted here (requirement 3.2).
+-- ─────────────────────────────────────────────
+CREATE TABLE session_rates (
+    id          SERIAL         PRIMARY KEY,
+    session_id  INT            NOT NULL UNIQUE REFERENCES sessions(id) ON DELETE CASCADE,
+    hourly_rate DECIMAL(10, 2) NOT NULL CHECK (hourly_rate >= 0),
+    locked_at   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_session_rates_session ON session_rates(session_id);
+
+-- ─────────────────────────────────────────────
 -- 10. PAYMENTS
 -- reference_type + reference_id acts as a polymorphic FK
 -- (avoids nullable columns while linking sessions OR fines).
@@ -196,6 +212,7 @@ CREATE TABLE fines (
     issued_by   INT            NOT NULL REFERENCES users(id),   -- issuer
     vehicle_id  INT            NOT NULL REFERENCES vehicles(id),
     zone_id     INT            NOT NULL REFERENCES zones(id),
+    space_number INT           NOT NULL CHECK (space_number > 0),
     reason      VARCHAR(255)   NOT NULL,
     evidence_url TEXT,
     amount      DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
@@ -211,7 +228,23 @@ CREATE INDEX idx_fines_zone_id    ON fines(zone_id);
 CREATE INDEX idx_fines_status     ON fines(status);
 
 -- ─────────────────────────────────────────────
--- 13. updated_at TRIGGER
+-- 13. ADMIN ACTION LOGS
+-- Immutable audit trail of privileged admin actions, so power can't be
+-- abused without leaving a record (who did what, and when).
+-- ─────────────────────────────────────────────
+CREATE TABLE admin_action_logs (
+    id         BIGSERIAL    PRIMARY KEY,
+    admin_id   INT          NOT NULL REFERENCES users(id),
+    action     VARCHAR(100) NOT NULL,   -- e.g. 'zone.create', 'zone.update', 'report.view'
+    details    TEXT,                    -- human-readable summary of what changed
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_admin_action_logs_admin   ON admin_action_logs(admin_id);
+CREATE INDEX idx_admin_action_logs_created ON admin_action_logs(created_at);
+
+-- ─────────────────────────────────────────────
+-- 14. updated_at TRIGGER
 -- Keeps updated_at current on every row UPDATE.
 -- ─────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION set_updated_at()

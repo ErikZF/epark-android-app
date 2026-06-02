@@ -47,5 +47,7 @@ app.MapSessionEndpoints();
 app.MapPaymentEndpoints();
 app.MapFineEndpoints();
 app.MapReportEndpoints();
+app.MapAdminLogEndpoints();
+app.MapAdminNotificationEndpoints();
 
 app.Run();

@@ -1,6 +1,7 @@
 package com.example.myapplication.data.repository
 
 import com.example.myapplication.data.ActiveSession
+import com.example.myapplication.data.AdminActionLog
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.ZoneRevenue
 import com.example.myapplication.data.Fine
@@ -8,6 +9,9 @@ import com.example.myapplication.data.ParkingSession
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.PaymentMethod
 import com.example.myapplication.data.Vehicle
+import com.example.myapplication.data.AdminAlert
+import com.example.myapplication.data.remote.AdminActionLogDto
+import com.example.myapplication.data.remote.AdminNotificationDto
 import com.example.myapplication.data.remote.FineDto
 import com.example.myapplication.data.remote.PaymentMethodDto
 import com.example.myapplication.data.remote.ReportSummaryDto
@@ -125,6 +129,51 @@ fun VehicleDto.toDomain(): Vehicle = Vehicle(
     model = model ?: "",
     year = "",
 )
+
+fun AdminActionLogDto.toDomain(): AdminActionLog = AdminActionLog(
+    id = id.toString(),
+    adminName = adminName,
+    action = when (action) {
+        "zone.create" -> "Creó zona"
+        "zone.update" -> "Actualizó zona"
+        "report.view" -> "Consultó reportes"
+        else -> action
+    },
+    details = details ?: "",
+    date = localDate(createdAt),
+    time = localTime(createdAt),
+)
+
+fun AdminNotificationDto.toDomain(): AdminAlert {
+    val amountLabel = amount?.let { colones(it) }
+    val spaceLabel = spaceNumber?.let { "#%04d".format(it) }
+    val (source, title, body) = when (type) {
+        "session_overdue" -> Triple(
+            "Sesiones",
+            "Vehículo con sesión vencida",
+            "La placa $plate excedió su tiempo en $zoneName.",
+        )
+        "fine_paid" -> Triple(
+            "Multas",
+            "Multa pagada",
+            "Se pagó la multa de la placa $plate en $zoneName${amountLabel?.let { " ($it)" } ?: ""}.",
+        )
+        else -> Triple("Alerta", type, "$plate · $zoneName")
+    }
+    return AdminAlert(
+        id = id,
+        source = source,
+        title = title,
+        body = body,
+        time = localTime(timestamp),
+        type = type,
+        referenceId = referenceId,
+        plate = plate,
+        zoneName = zoneName,
+        amount = amountLabel,
+        spaceNumber = spaceLabel,
+    )
+}
 
 fun ReportSummaryDto.toDomain(): AdminReportSummary = AdminReportSummary(
     totalSessions = totalSessions,

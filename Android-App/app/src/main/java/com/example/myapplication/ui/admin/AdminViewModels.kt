@@ -2,10 +2,12 @@ package com.example.myapplication.ui.admin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.AdminActionLog
 import com.example.myapplication.data.AdminReportSummary
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.remote.ApiClient
+import com.example.myapplication.data.repository.AdminLogRepository
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.FineRepository
 import com.example.myapplication.data.repository.ReportRepository
@@ -30,13 +32,11 @@ class AdminZonesViewModel(
     private val _state = MutableStateFlow(AdminZonesUiState())
     val state: StateFlow<AdminZonesUiState> = _state.asStateFlow()
 
-    init { refresh() }
-
     fun refresh() {
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val zones = repo.getZones(municipalityId = AuthState.municipalityId.takeIf { it > 0 })
+                val zones = repo.getZones(municipalityId = AuthState.municipalityId.takeIf { it > 0 }, includeInactive = true)
                 _state.value = AdminZonesUiState(loading = false, zones = zones)
             } catch (e: Exception) {
                 _state.value = AdminZonesUiState(loading = false, error = "No se pudieron cargar las zonas.")
@@ -198,6 +198,58 @@ class AdminManageZoneViewModel(
     }
 }
 
+data class AdminLogsUiState(
+    val loading: Boolean = true,
+    val logs: List<AdminActionLog> = emptyList(),
+    val error: String? = null,
+)
+
+class AdminLogsViewModel(
+    private val repo: AdminLogRepository = AdminLogRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(AdminLogsUiState())
+    val state: StateFlow<AdminLogsUiState> = _state.asStateFlow()
+
+    init { refresh() }
+
+    fun refresh() {
+        _state.value = _state.value.copy(loading = true, error = null)
+        viewModelScope.launch {
+            try {
+                _state.value = AdminLogsUiState(loading = false, logs = repo.getLogs())
+            } catch (e: Exception) {
+                _state.value = AdminLogsUiState(loading = false, error = "No se pudo cargar la bitácora.")
+            }
+        }
+    }
+}
+
+data class AdminAlertsUiState(
+    val loading: Boolean = true,
+    val alerts: List<com.example.myapplication.data.AdminAlert> = emptyList(),
+    val error: String? = null,
+)
+
+class AdminAlertsViewModel(
+    private val repo: com.example.myapplication.data.repository.AdminNotificationRepository =
+        com.example.myapplication.data.repository.AdminNotificationRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(AdminAlertsUiState())
+    val state: StateFlow<AdminAlertsUiState> = _state.asStateFlow()
+
+    fun refresh() {
+        _state.value = _state.value.copy(loading = true, error = null)
+        viewModelScope.launch {
+            try {
+                val alerts = repo.getNotifications(AuthState.municipalityId.takeIf { it > 0 })
+                _state.value = AdminAlertsUiState(loading = false, alerts = alerts)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(loading = false, error = "No se pudieron cargar las alertas.")
+            }
+        }
+    }
+}
+
 data class AdminIssueFineUiState(
     val loading: Boolean = false,
     val success: Boolean = false,
@@ -211,14 +263,17 @@ class AdminIssueFineViewModel(
     private val _state = MutableStateFlow(AdminIssueFineUiState())
     val state: StateFlow<AdminIssueFineUiState> = _state.asStateFlow()
 
-    fun issue(plate: String, zoneId: String, reason: String, amountStr: String) {
+    fun issue(plate: String, zoneId: String, spaceNumberStr: String, reason: String, amountStr: String, zoneTotalSpots: Int) {
         val amount = amountStr.trim().toDoubleOrNull()
         val zoneIdInt = zoneId.toIntOrNull()
+        val spaceNumber = spaceNumberStr.trim().toIntOrNull()
         val error = when {
             plate.isBlank() -> "La placa es requerida."
             reason.isBlank() -> "El motivo es requerido."
             amount == null || amount <= 0 -> "El monto debe ser mayor a 0."
             zoneIdInt == null -> "Selecciona una zona."
+            spaceNumber == null || spaceNumber <= 0 -> "El espacio debe ser un número mayor a 0."
+            spaceNumber > zoneTotalSpots -> "Espacio inválido. La zona tiene solo $zoneTotalSpots espacios."
             else -> null
         }
         if (error != null) { _state.value = AdminIssueFineUiState(error = error); return }
@@ -227,7 +282,7 @@ class AdminIssueFineViewModel(
         viewModelScope.launch {
             try {
                 val vehicle = ApiClient.api.getVehicleByPlate(plate.trim().uppercase())
-                fineRepo.issueFine(vehicle.id, zoneIdInt!!, reason.trim(), amount!!)
+                fineRepo.issueFine(vehicle.id, zoneIdInt!!, spaceNumber!!, reason.trim(), amount!!)
                 _state.value = AdminIssueFineUiState(success = true)
             } catch (e: retrofit2.HttpException) {
                 val msg = if (e.code() == 404) "Placa no encontrada." else "Error al emitir multa."
