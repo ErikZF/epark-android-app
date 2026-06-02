@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.AlertPreferences
+import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.HistoryCache
 import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.navigation.EparkNavHost
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AlertPreferences.init(this)
+        AuthPreferences.init(this)
         HistoryCache.init(this)
         NotificationHelper.createChannels(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&

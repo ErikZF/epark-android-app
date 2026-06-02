@@ -138,7 +138,7 @@ class ActiveSessionViewModel(
             return "%d:%02d:%02d".format(h, m, s)
         }
 
-        /** Returns the UTC ms of [closeHour] (local Costa Rica time) on the local day of [referenceMs]. */
+        /** Returns the epoch-ms instant of [closeHour] (Costa Rica local time) on the CR-local day of [referenceMs]. */
         fun zoneCloseMs(referenceMs: Long, closeHour: Int): Long {
             val tz = TimeZone.getTimeZone("America/Costa_Rica")
             val cal = Calendar.getInstance(tz)

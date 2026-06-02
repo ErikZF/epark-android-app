@@ -1,18 +1,29 @@
 package com.example.myapplication.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.myapplication.data.AuthPreferences
+import com.example.myapplication.data.Fine
 import com.example.myapplication.data.ParkingZone
+import com.example.myapplication.data.SessionAlarmScheduler
 import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.data.repository.AuthState
+import kotlinx.coroutines.launch
 import com.example.myapplication.ui.admin.AdminZonesViewModel
 import com.example.myapplication.ui.components.*
+import com.example.myapplication.ui.history.HistoryViewModel
 import com.example.myapplication.ui.home.HomeViewModel
 import com.example.myapplication.ui.payment.PaymentMethodsViewModel
 import com.example.myapplication.ui.profile.ProfileViewModel
@@ -24,6 +35,10 @@ import com.example.myapplication.ui.session.SessionConfigViewModel
 fun EparkNavHost(navController: NavHostController) {
     // Shared mutable state across the nav graph
     var selectedZone by remember { mutableStateOf<ParkingZone?>(null) }
+
+    // Fine passed from History → PayFine → FinePaymentSuccess
+    var selectedFine by remember { mutableStateOf<Fine?>(null) }
+    var fineInvoice by remember { mutableStateOf<String?>(null) }
 
     // Finalized session data passed from ActiveSession → Payment → PaymentSuccess
     var finalizedSessionId by remember { mutableStateOf(-1) }
@@ -47,6 +62,10 @@ fun EparkNavHost(navController: NavHostController) {
     val sessionConfigVm: SessionConfigViewModel = viewModel()
     // Scoped here so adding a vehicle from any flow refreshes the VEHICLES screen
     val vehiclesVm: VehiclesViewModel = viewModel()
+    // Scoped here so fine payment can trigger a refresh on the history list
+    val historyVm: HistoryViewModel = viewModel()
+
+    val coroutineScope = rememberCoroutineScope()
 
     // Resident bottom bar state
     var residentTab by remember { mutableStateOf(ResidentTab.HOME) }
@@ -63,6 +82,7 @@ fun EparkNavHost(navController: NavHostController) {
             Routes.VEHICLES -> vehiclesVm.refresh()
             Routes.SESSION_CONFIG -> sessionConfigVm.refresh()
             Routes.SELECT_VEHICLE -> sessionConfigVm.refresh()
+            Routes.HISTORY -> historyVm.refresh()
         }
     }
 
@@ -72,7 +92,7 @@ fun EparkNavHost(navController: NavHostController) {
         Routes.PAYMENT_SUCCESS, Routes.ACTIVE_SESSION, Routes.EXTEND_SESSION,
         Routes.HISTORY, Routes.PROFILE, Routes.EDIT_PROFILE, Routes.VEHICLES,
         Routes.ADD_VEHICLE, Routes.PAYMENT_METHODS, Routes.ADD_PAYMENT,
-        Routes.NOTIFICATIONS, Routes.PAY_FINE,
+        Routes.NOTIFICATIONS, Routes.PAY_FINE, Routes.FINE_PAYMENT_SUCCESS,
     )
     val adminRoutes = setOf(
         Routes.ADMIN_ZONES, Routes.ADMIN_REPORTS, Routes.ADMIN_FINES, Routes.ADMIN_ALERTS,
@@ -134,7 +154,33 @@ fun EparkNavHost(navController: NavHostController) {
         }
     }
 
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    NavHost(navController = navController, startDestination = Routes.SPLASH) {
+
+        // ── Splash / session restore ──────────────────────────────────────
+        composable(Routes.SPLASH) {
+            LaunchedEffect(Unit) {
+                val stored = AuthPreferences.load()
+                if (stored != null) {
+                    AuthState.set(stored)
+                    if (stored.role != "admin") {
+                        activeSessionVm.loadActiveSession()
+                        profileVm.refresh()
+                        homeVm.refresh()
+                    }
+                    val destination = if (stored.role == "admin") Routes.ADMIN_ZONES else Routes.USER_HOME
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
 
         // ── Auth ──────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
@@ -245,6 +291,7 @@ fun EparkNavHost(navController: NavHostController) {
 
         composable(Routes.PAYMENT) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.SESSION }
+            val paymentContext = LocalContext.current
             PaymentScreen(
                 sessionId = finalizedSessionId,
                 totalCost = finalizedCost,
@@ -252,6 +299,8 @@ fun EparkNavHost(navController: NavHostController) {
                 onConfirm = { actualCost, invoice ->
                     finalizedCost = actualCost
                     finalizedInvoice = invoice
+                    // La sesión terminó: cancelamos la alarma de vencimiento pendiente.
+                    SessionAlarmScheduler.cancel(paymentContext)
                     activeSessionVm.clearSession()
                     navController.navigate(Routes.PAYMENT_SUCCESS)
                 },
@@ -282,8 +331,12 @@ fun EparkNavHost(navController: NavHostController) {
         composable(Routes.HISTORY) {
             LaunchedEffect(Unit) { residentTab = ResidentTab.HISTORY }
             HistoryScreen(
-                onPayFine = { navController.navigate(Routes.PAY_FINE) },
+                onPayFine = { fine ->
+                    selectedFine = fine
+                    navController.navigate(Routes.PAY_FINE)
+                },
                 bottomBar = residentBottomBar,
+                vm = historyVm,
             )
         }
 
@@ -296,6 +349,7 @@ fun EparkNavHost(navController: NavHostController) {
                 onPaymentMethods = { navController.navigate(Routes.PAYMENT_METHODS) },
                 onNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onLogout = {
+                    coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     activeSessionVm.clearSession()
                     profileVm.clear()
@@ -381,15 +435,37 @@ fun EparkNavHost(navController: NavHostController) {
         }
 
         composable(Routes.PAY_FINE) {
-            PayFineScreen(
-                onConfirm = {
-                    navController.navigate(Routes.PAYMENT_SUCCESS) {
-                        popUpTo(Routes.HISTORY)
-                    }
-                },
-                onBack = { navController.popBackStack() },
-                bottomBar = residentBottomBar,
-            )
+            selectedFine?.let { fine ->
+                PayFineScreen(
+                    fine = fine,
+                    onConfirm = { invoice ->
+                        fineInvoice = invoice
+                        historyVm.refresh()
+                        navController.navigate(Routes.FINE_PAYMENT_SUCCESS) {
+                            popUpTo(Routes.HISTORY)
+                        }
+                    },
+                    onBack = { navController.popBackStack() },
+                    bottomBar = residentBottomBar,
+                )
+            }
+        }
+
+        composable(Routes.FINE_PAYMENT_SUCCESS) {
+            selectedFine?.let { fine ->
+                FinePaymentSuccessScreen(
+                    zoneName = fine.zoneName,
+                    reason = fine.reason,
+                    totalPaid = fine.amount,
+                    invoiceNumber = fineInvoice,
+                    onBack = {
+                        navController.navigate(Routes.HISTORY) {
+                            popUpTo(Routes.HISTORY) { inclusive = true }
+                        }
+                    },
+                    bottomBar = residentBottomBar,
+                )
+            }
         }
 
         // ── Admin ─────────────────────────────────────────────────────────
@@ -468,6 +544,7 @@ fun EparkNavHost(navController: NavHostController) {
             AdminAlertsScreen(
                 onAlertClick = { alertId -> navController.navigate(Routes.adminAlertDetail(alertId)) },
                 onLogout = {
+                    coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }

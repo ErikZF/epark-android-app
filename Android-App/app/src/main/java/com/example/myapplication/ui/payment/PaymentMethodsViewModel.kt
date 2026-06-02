@@ -105,6 +105,36 @@ class SessionPaymentViewModel(
     }
 }
 
+data class FinePaymentUiState(
+    val loading: Boolean = false,
+    val error: String? = null,
+)
+
+class FinePaymentViewModel(
+    private val payRepo: PaymentRepository = PaymentRepository(),
+) : ViewModel() {
+    private val _state = MutableStateFlow(FinePaymentUiState())
+    val state: StateFlow<FinePaymentUiState> = _state.asStateFlow()
+
+    fun pay(
+        fineId: Int,
+        amount: Double,
+        paymentMethodId: Int?,
+        onSuccess: (invoiceNumber: String?) -> Unit,
+    ) {
+        _state.value = FinePaymentUiState(loading = true)
+        viewModelScope.launch {
+            try {
+                val payment = payRepo.pay(amount, "Fine", fineId, paymentMethodId)
+                _state.value = FinePaymentUiState()
+                onSuccess(payment.invoiceNumber)
+            } catch (e: Exception) {
+                _state.value = FinePaymentUiState(error = "No se pudo procesar el pago. Intenta de nuevo.")
+            }
+        }
+    }
+}
+
 data class PaymentMethodsUiState(
     val loading: Boolean = true,
     val methods: List<PaymentMethod> = emptyList(),

@@ -18,16 +18,18 @@ import com.example.myapplication.data.remote.EparkApi
 import com.example.myapplication.data.remote.UpdateZoneRequestDto
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
 import com.example.myapplication.data.remote.FinalizeSessionResponseDto
+import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.remote.LoginRequestDto
 import com.example.myapplication.data.remote.RegisterRequestDto
 
 private val api: EparkApi get() = ApiClient.api
 
 class AuthRepository {
-    /** Logs in and stores the session in [AuthState]. Returns the role. */
+    /** Logs in, stores the session in [AuthState], and persists it to DataStore. Returns the role. */
     suspend fun login(email: String, password: String): String {
         val auth = api.login(LoginRequestDto(email.trim(), password))
         AuthState.set(auth)
+        AuthPreferences.save(auth)
         return auth.role
     }
 
@@ -42,6 +44,7 @@ class AuthRepository {
             RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
         )
         AuthState.set(auth)
+        AuthPreferences.save(auth)
         return auth.role
     }
 }
@@ -58,6 +61,8 @@ class ZoneRepository {
         longitude: Double,
         totalSpots: Int,
         hourlyRate: Double,
+        openHour: Int,
+        closeHour: Int,
     ) = api.createZone(
         CreateZoneRequestDto(
             municipalityId,
@@ -66,7 +71,9 @@ class ZoneRepository {
             latitude,
             longitude,
             totalSpots,
-            hourlyRate
+            hourlyRate,
+            openHour,
+            closeHour,
         )
     )
 
@@ -168,7 +175,7 @@ class FineRepository {
     suspend fun getUserFines(userId: Int = AuthState.userId): List<Fine> =
         api.getUserFines(userId).map { it.toDomain() }
 
-    suspend fun getAllFines(): List<Fine> = api.getAllFines().map { it.toDomain() }
+    suspend fun getAllFines(municipalityId: Int? = null): List<Fine> = api.getAllFines(municipalityId).map { it.toDomain() }
 
     suspend fun issueFine(vehicleId: Int, zoneId: Int, reason: String, amount: Double) {
         api.createFine(

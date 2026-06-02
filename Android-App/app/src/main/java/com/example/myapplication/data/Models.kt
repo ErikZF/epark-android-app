@@ -11,14 +11,17 @@ data class ParkingZone(
     val hours: String,
     val totalSpots: Int,
     val freeSpots: Int,
-    // UTC hours; openHour 0-23, closeHour 1-24 (24 = midnight of next day)
+    // Local (Costa Rica) hours; openHour 0-23, closeHour 1-24 (24 = midnight of next day)
     val openHour: Int = 6,
     val closeHour: Int = 22,
     val isActive: Boolean = true,
     val hourlyRate: Double = 0.0,
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-)
+) {
+    /** True when the zone has usable coordinates (not the default/missing 0,0 "null island"). */
+    val hasCoordinates: Boolean get() = latitude != 0.0 || longitude != 0.0
+}
 
 data class ActiveSession(
     val id: Int,
@@ -66,7 +69,9 @@ data class Fine(
     val plate: String,
     val date: String,
     val time: String,
+    val reason: String,
     val amount: String,
+    val amountRaw: Double,
     val isPaid: Boolean,
 )
 

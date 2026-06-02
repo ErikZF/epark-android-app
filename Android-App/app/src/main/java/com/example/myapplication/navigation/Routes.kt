@@ -1,6 +1,8 @@
 package com.example.myapplication.navigation
 
 object Routes {
+    const val SPLASH = "splash"
+
     // Auth
     const val LOGIN = "login"
     const val REGISTER = "register"
@@ -32,6 +34,7 @@ object Routes {
 
     // Fines
     const val PAY_FINE = "pay_fine"
+    const val FINE_PAYMENT_SUCCESS = "fine_payment_success"
 
     // Admin
     const val ADMIN_ZONES = "admin_zones"

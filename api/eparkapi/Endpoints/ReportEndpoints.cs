@@ -9,7 +9,7 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to, int? municipalityId = null) =>
+        app.MapGet("/api/admin/reports/summary", async (EparkDbContext db, string? from, string? to, int? municipalityId) =>
         {
             DateTimeOffset? fromDate = null;
             DateTimeOffset? toDate   = null;
@@ -19,9 +19,12 @@ public static class ReportEndpoints
             if (!string.IsNullOrWhiteSpace(to) && DateTimeOffset.TryParse(to, out var td))
                 toDate = td.ToUniversalTime().AddDays(1).AddSeconds(-1);
 
-            var sessionsQuery = db.Sessions.AsQueryable();
-            var paymentsQuery = db.Payments.Where(p => p.Status == PaymentStatus.Completed);
-            var finesQuery    = db.Fines.AsQueryable();
+            var sessionsQuery = db.Sessions
+                .Where(s => municipalityId == null || s.Zone.MunicipalityId == municipalityId)
+                .AsQueryable();
+            var finesQuery = db.Fines
+                .Where(f => municipalityId == null || f.Zone.MunicipalityId == municipalityId)
+                .AsQueryable();
 
             if (municipalityId.HasValue)
             {
@@ -32,35 +35,28 @@ public static class ReportEndpoints
             if (fromDate.HasValue)
             {
                 sessionsQuery = sessionsQuery.Where(s => s.ScheduledStart >= fromDate.Value);
-                paymentsQuery = paymentsQuery.Where(p => p.PaidAt >= fromDate.Value);
                 finesQuery    = finesQuery.Where(f => f.IssuedAt >= fromDate.Value);
             }
             if (toDate.HasValue)
             {
                 sessionsQuery = sessionsQuery.Where(s => s.ScheduledStart <= toDate.Value);
-                paymentsQuery = paymentsQuery.Where(p => p.PaidAt <= toDate.Value);
                 finesQuery    = finesQuery.Where(f => f.IssuedAt <= toDate.Value);
             }
 
-            // For revenue: join date-filtered payments with municipality-filtered sessions
-            var municipalitySessions = municipalityId.HasValue
-                ? db.Sessions.Where(s => s.Zone.MunicipalityId == municipalityId.Value)
-                : db.Sessions.AsQueryable();
+            var sessionIds = sessionsQuery.Select(s => s.Id);
 
             var totalSessions = await sessionsQuery.CountAsync();
-            var revenue = await (
-                from p in paymentsQuery
-                where p.ReferenceType == PaymentReference.Session
-                join s in municipalitySessions on p.ReferenceId equals s.Id
-                select p.Amount
-            ).SumAsync(x => (decimal?)x) ?? 0m;
-            var finesIssued = await finesQuery.CountAsync();
-            var activeSpots = await db.Sessions
-                .Where(s => s.Status == SessionStatus.Active
-                         && (!municipalityId.HasValue || s.Zone.MunicipalityId == municipalityId.Value))
-                .CountAsync();
-            var totalSpots = await db.Zones
-                .Where(z => z.IsActive && (!municipalityId.HasValue || z.MunicipalityId == municipalityId.Value))
+            var revenue       = await db.Payments
+                .Where(p => p.Status == PaymentStatus.Completed
+                         && p.ReferenceType == PaymentReference.Session
+                         && sessionIds.Contains(p.ReferenceId))
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var finesIssued   = await finesQuery.CountAsync();
+            var activeSpots   = await db.Sessions
+                .CountAsync(s => s.Status == SessionStatus.Active
+                              && (municipalityId == null || s.Zone.MunicipalityId == municipalityId));
+            var totalSpots    = await db.Zones
+                .Where(z => z.IsActive && (municipalityId == null || z.MunicipalityId == municipalityId))
                 .SumAsync(z => (int?)z.TotalSpots) ?? 0;
 
             // Revenue breakdown per zone (only session payments)

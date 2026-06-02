@@ -56,7 +56,7 @@ class SessionConfigViewModel(
 
     /**
      * Validates the entered space and starts a session for [zone].
-     * The session runs until the zone's closing time today (UTC).
+     * The session runs until the zone's closing time today (local Costa Rica time).
      * Invokes [onSuccess] on the calling screen to navigate to the active session view.
      */
     fun startSession(zone: ParkingZone, spaceText: String, onSuccess: () -> Unit) {

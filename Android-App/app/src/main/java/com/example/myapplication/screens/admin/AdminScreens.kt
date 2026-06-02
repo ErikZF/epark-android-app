@@ -99,6 +99,8 @@ fun AdminAddZoneScreen(
     var rate by remember { mutableStateOf("") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
+    var openHour by remember { mutableStateOf("6") }
+    var closeHour by remember { mutableStateOf("22") }
 
     val uiState by vm.state.collectAsState()
 
@@ -130,6 +132,19 @@ fun AdminAddZoneScreen(
                         LabeledField("Latitud", latitude, Modifier.weight(1f)) { latitude = it }
                         LabeledField("Longitud", longitude, Modifier.weight(1f)) { longitude = it }
                     }
+                    Text("Horario (hora en formato 0-23)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Desde", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Spacer(Modifier.height(4.dp))
+                            EparkTextField(openHour, { openHour = it }, "6", Modifier.fillMaxWidth())
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Hasta", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Spacer(Modifier.height(4.dp))
+                            EparkTextField(closeHour, { closeHour = it }, "22", Modifier.fillMaxWidth())
+                        }
+                    }
                 }
             }
             if (uiState.error != null) {
@@ -141,7 +156,7 @@ fun AdminAddZoneScreen(
                 text = if (uiState.loading) "Guardando..." else "Guardar zona",
                 enabled = !uiState.loading,
                 onClick = {
-                    vm.save(AuthState.municipalityId, name.trim(), description.trim(), spaces, rate, latitude, longitude)
+                    vm.save(AuthState.municipalityId, name.trim(), description.trim(), spaces, rate, latitude, longitude, openHour, closeHour)
                 },
             )
             Spacer(Modifier.height(16.dp))

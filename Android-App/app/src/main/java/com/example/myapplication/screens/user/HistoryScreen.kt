@@ -9,13 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.Fine
 import com.example.myapplication.ui.components.*
 import com.example.myapplication.ui.history.HistoryViewModel
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun HistoryScreen(
-    onPayFine: () -> Unit,
+    onPayFine: (Fine) -> Unit,
     bottomBar: @Composable () -> Unit,
     vm: HistoryViewModel = viewModel(),
 ) {
