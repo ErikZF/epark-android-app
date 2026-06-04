@@ -15,6 +15,8 @@ public record RegisterRequest(
 
 public record LoginRequest(string Email, string Password);
 
+public record ResendVerificationRequest(string Email);
+
 public record AuthResponse(int UserId, string FullName, string Email, string Role, int? MunicipalityId);
 
 // ── Zones ────────────────────────────────────────────

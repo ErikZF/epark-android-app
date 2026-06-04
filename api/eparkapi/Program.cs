@@ -1,12 +1,14 @@
 using eparkapi.Data;
 using eparkapi.Endpoints;
 using eparkapi.Models.Enums;
+using eparkapi.Services;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
 const string CorsPolicy = "AllowApp";
 builder.Services.AddCors(options =>

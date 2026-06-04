@@ -22,6 +22,7 @@ import com.example.myapplication.data.remote.FinalizeSessionResponseDto
 import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.remote.LoginRequestDto
 import com.example.myapplication.data.remote.RegisterRequestDto
+import com.example.myapplication.data.remote.ResendVerificationRequestDto
 
 private val api: EparkApi get() = ApiClient.api
 
@@ -47,6 +48,11 @@ class AuthRepository {
         AuthState.set(auth)
         AuthPreferences.save(auth)
         return auth.role
+    }
+
+    /** Re-sends the account-activation email for an unverified account. */
+    suspend fun resendVerification(email: String) {
+        api.resendVerification(ResendVerificationRequestDto(email.trim()))
     }
 }
 
