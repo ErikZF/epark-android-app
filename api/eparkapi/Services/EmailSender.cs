@@ -38,9 +38,11 @@ public class SmtpEmailSender(IConfiguration config, ILogger<SmtpEmailSender> log
         using var client = new SmtpClient(host, port)
         {
             EnableSsl = true,
-            Credentials = string.IsNullOrWhiteSpace(username)
-                ? CredentialCache.DefaultNetworkCredentials
-                : new NetworkCredential(username, password),
+            DeliveryMethod = SmtpDeliveryMethod.Network,
+            // Must be set to false BEFORE assigning Credentials, otherwise
+            // SmtpClient ignores the explicit credentials and Gmail rejects auth.
+            UseDefaultCredentials = false,
+            Credentials = new NetworkCredential(username, password),
         };
 
         var message = new MailMessage
