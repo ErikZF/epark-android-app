@@ -39,7 +39,13 @@ fun HistoryScreen(
                 Text("Actividad", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                 if (uiState.isOffline) {
                     Spacer(Modifier.height(8.dp))
-                    ErrorBanner("Sin conexión — mostrando historial guardado localmente")
+                    val savedLabel = remember(uiState.offlineSavedAt) {
+                        if (uiState.offlineSavedAt > 0L) {
+                            val fmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault())
+                            " (guardado el ${fmt.format(java.util.Date(uiState.offlineSavedAt))})"
+                        } else ""
+                    }
+                    WarningBanner("Sin conexión — mostrando historial guardado localmente$savedLabel")
                 }
                 Spacer(Modifier.height(16.dp))
                 SegmentedTabs(

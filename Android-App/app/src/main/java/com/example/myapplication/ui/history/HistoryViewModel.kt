@@ -20,6 +20,8 @@ data class HistoryUiState(
     val fines: List<Fine> = emptyList(),
     val error: String? = null,
     val isOffline: Boolean = false,
+    // Epoch millis of the locally-cached data shown while offline (0 = none).
+    val offlineSavedAt: Long = 0L,
 )
 
 class HistoryViewModel(
@@ -38,6 +40,7 @@ class HistoryViewModel(
             var sessions: List<ParkingSession> = emptyList()
             var fines: List<Fine> = emptyList()
             var offline = false
+            var savedAt = 0L
             var errorMsg: String? = null
 
             coroutineScope {
@@ -59,6 +62,7 @@ class HistoryViewModel(
                     if (cached.isNotEmpty()) {
                         sessions = cached
                         offline = true
+                        savedAt = HistoryCache.lastSavedAt()
                     } else {
                         errorMsg = "Sin conexión y sin datos guardados."
                     }
@@ -67,7 +71,9 @@ class HistoryViewModel(
                 finesResult.onSuccess { fetched ->
                     fines = fetched
                 }.onFailure {
-                    errorMsg = errorMsg ?: "No se pudieron cargar las multas."
+                    // While offline the offline banner already explains the state,
+                    // so don't stack a separate fines error on top of it.
+                    if (!offline) errorMsg = errorMsg ?: "No se pudieron cargar las multas."
                 }
             }
 
@@ -77,6 +83,7 @@ class HistoryViewModel(
                 fines = fines,
                 error = errorMsg,
                 isOffline = offline,
+                offlineSavedAt = savedAt,
             )
         }
     }
