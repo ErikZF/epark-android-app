@@ -14,6 +14,7 @@ import com.google.gson.reflect.TypeToken
 object HistoryCache {
     private const val PREFS = "epark_history_cache"
     private const val KEY_SESSIONS_PREFIX = "cached_sessions_"
+    private const val KEY_SAVED_AT_PREFIX = "cached_saved_at_"
     private const val MAX_SESSIONS = 20
 
     private val gson = Gson()
@@ -24,6 +25,7 @@ object HistoryCache {
     }
 
     private fun keyFor(userId: Int) = "$KEY_SESSIONS_PREFIX$userId"
+    private fun savedAtKeyFor(userId: Int) = "$KEY_SAVED_AT_PREFIX$userId"
 
     fun saveSessions(sessions: List<ParkingSession>, userId: Int = AuthState.userId) {
         if (userId == 0) return
@@ -31,6 +33,7 @@ object HistoryCache {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(keyFor(userId), gson.toJson(recent))
+            .putLong(savedAtKeyFor(userId), System.currentTimeMillis())
             .apply()
     }
 
@@ -43,6 +46,13 @@ object HistoryCache {
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    /** Epoch millis of the last successful save, or 0 if nothing is cached. */
+    fun lastSavedAt(userId: Int = AuthState.userId): Long {
+        if (userId == 0) return 0L
+        return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(savedAtKeyFor(userId), 0L)
     }
 
     /** Removes all cached history. Call on logout so the next user starts clean. */
