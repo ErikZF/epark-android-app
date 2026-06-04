@@ -17,6 +17,9 @@ interface EparkApi {
     @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequestDto): AuthResponseDto
 
+    @POST("api/auth/resend-verification")
+    suspend fun resendVerification(@Body body: ResendVerificationRequestDto): Response<Unit>
+
     // ── Zones ──
     @GET("api/zones")
     suspend fun getZones(

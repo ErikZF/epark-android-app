@@ -55,6 +55,14 @@ fun LoginScreen(
                 Text(msg, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(8.dp))
             }
+            if (uiState.needsVerification) {
+                TextLink("Reenviar correo de verificación", onClick = { vm.resendVerification() })
+                Spacer(Modifier.height(8.dp))
+            }
+            uiState.resendMessage?.let { msg ->
+                Text(msg, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = PrimaryGreen)
+                Spacer(Modifier.height(8.dp))
+            }
             PrimaryButton(
                 text = if (uiState.loading) "Ingresando..." else "Continuar",
                 onClick = { vm.login(email, password, onLoggedIn) },
