@@ -20,6 +20,9 @@ interface EparkApi {
     @POST("api/auth/resend-verification")
     suspend fun resendVerification(@Body body: ResendVerificationRequestDto): Response<Unit>
 
+    @GET("api/auth/check-verification")
+    suspend fun checkVerification(@Query("email") email: String): CheckVerificationResponseDto
+
     // ── Zones ──
     @GET("api/zones")
     suspend fun getZones(

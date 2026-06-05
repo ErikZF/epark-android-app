@@ -20,6 +20,7 @@ import com.example.myapplication.data.remote.UpdateZoneRequestDto
 import com.example.myapplication.data.remote.ExtendSessionRequestDto
 import com.example.myapplication.data.remote.FinalizeSessionResponseDto
 import com.example.myapplication.data.AuthPreferences
+import com.example.myapplication.data.remote.AuthResponseDto
 import com.example.myapplication.data.remote.LoginRequestDto
 import com.example.myapplication.data.remote.RegisterRequestDto
 import com.example.myapplication.data.remote.ResendVerificationRequestDto
@@ -35,25 +36,34 @@ class AuthRepository {
         return auth.role
     }
 
+    /**
+     * Creates the account on the server but intentionally does NOT commit to [AuthState] or
+     * [AuthPreferences] — the caller must call [commitAuth] after email verification is confirmed.
+     */
     suspend fun register(
         fullName: String,
         email: String,
         password: String,
         nationalId: String? = null,
         plate: String? = null,
-    ): String {
-        val auth = api.register(
-            RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
-        )
+    ): AuthResponseDto = api.register(
+        RegisterRequestDto(fullName = fullName, email = email.trim(), password = password, nationalId = nationalId, plate = plate)
+    )
+
+    /** Commits a verified auth response to [AuthState] and persists it to DataStore. */
+    suspend fun commitAuth(auth: AuthResponseDto) {
         AuthState.set(auth)
         AuthPreferences.save(auth)
-        return auth.role
     }
 
     /** Re-sends the account-activation email for an unverified account. */
     suspend fun resendVerification(email: String) {
         api.resendVerification(ResendVerificationRequestDto(email.trim()))
     }
+
+    /** Returns true when the account email has been verified. */
+    suspend fun checkVerification(email: String): Boolean =
+        api.checkVerification(email.trim()).verified
 }
 
 class ZoneRepository {

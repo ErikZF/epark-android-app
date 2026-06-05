@@ -53,12 +53,13 @@ El flujo completo (registro → activar → login) funciona sin Gmail.
 2. **"Manage User Secrets"**
 3. Pega este JSON (reemplaza con tus datos) y guarda:
 
+boimotguoouiedtk
 ```json
 {
   "Smtp:Host": "smtp.gmail.com",
   "Smtp:Port": "587",
   "Smtp:Username": "TU_CORREO@gmail.com",
-  "Smtp:Password": "TU_APP_PASSWORD_SIN_ESPACIOS",
+  "Smtp:Password": "boimotguoouiedtk"
   "Smtp:From": "TU_CORREO@gmail.com"
 }
 ```
@@ -69,9 +70,9 @@ El flujo completo (registro → activar → login) funciona sin Gmail.
 cd api/eparkapi
 dotnet user-secrets set "Smtp:Host" "smtp.gmail.com"
 dotnet user-secrets set "Smtp:Port" "587"
-dotnet user-secrets set "Smtp:Username" "TU_CORREO@gmail.com"
-dotnet user-secrets set "Smtp:Password" "TU_APP_PASSWORD_SIN_ESPACIOS"
-dotnet user-secrets set "Smtp:From" "TU_CORREO@gmail.com"
+dotnet user-secrets set "Smtp:Username" "erikzf025@gmail.com"
+dotnet user-secrets set "Smtp:Password" "boimotguoouiedtk"
+dotnet user-secrets set "Smtp:From" "erikzf025@gmail.com"
 ```
 
 ### Paso 3 — Reiniciar el API

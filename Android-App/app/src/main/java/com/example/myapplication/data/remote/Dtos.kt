@@ -20,6 +20,8 @@ data class LoginRequestDto(val email: String, val password: String)
 
 data class ResendVerificationRequestDto(val email: String)
 
+data class CheckVerificationResponseDto(val verified: Boolean)
+
 data class AuthResponseDto(
     val userId: Int,
     val fullName: String,
