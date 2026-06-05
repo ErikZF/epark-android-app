@@ -1,14 +1,18 @@
 package com.example.myapplication.screens.user
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.auth.LoginViewModel
 import com.example.myapplication.ui.auth.RegisterViewModel
@@ -26,7 +30,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().background(SurfaceWhite)) {
         BrandHeader()
         Column(
             modifier = Modifier
@@ -108,10 +112,14 @@ fun RegisterScreen(
     var cedula by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showSuccess by remember { mutableStateOf(false) }
     val uiState by vm.state.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Navigate as soon as the polling coroutine marks the email as verified.
+    LaunchedEffect(uiState.verified) {
+        if (uiState.verified) onRegisterSuccess()
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(SurfaceWhite)) {
         Column(modifier = Modifier.fillMaxSize()) {
             BrandHeader()
             Column(
@@ -143,25 +151,77 @@ fun RegisterScreen(
                 }
                 PrimaryButton(
                     text = if (uiState.loading) "Creando cuenta..." else "Crear cuenta",
-                    onClick = { vm.register(name, cedula, email, password) { showSuccess = true } },
-                    enabled = !uiState.loading,
+                    onClick = { vm.register(name, cedula, email, password) },
+                    enabled = !uiState.loading && !uiState.awaitingVerification,
                 )
                 Spacer(Modifier.height(24.dp))
             }
         }
-        if (showSuccess) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center,
+
+        if (uiState.awaitingVerification) {
+            VerificationWaitingOverlay(
+                email = uiState.pendingEmail,
+                resendMessage = uiState.resendMessage,
+                onResend = { vm.resendVerification() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun VerificationWaitingOverlay(
+    email: String,
+    resendMessage: String?,
+    onResend: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(androidx.compose.ui.graphics.Color(0x99000000))
+            .padding(32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.material3.Card(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 8.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                SuccessDialog(
-                    title = "¡Cuenta creada!",
-                    message = "Revisa tu correo electrónico y haz clic en el enlace de activación para confirmar tu cuenta.",
-                    primaryLabel = "Continuar",
-                    onPrimary = { onRegisterSuccess() },
+                Text("📧", fontSize = 48.sp)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Verifica tu correo",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                 )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Hemos enviado un enlace de activación a\n$email",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = TextMuted,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(24.dp))
+                CircularProgressIndicator(color = PrimaryGreen)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Esperando verificación...",
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                )
+                Spacer(Modifier.height(20.dp))
+                resendMessage?.let { msg ->
+                    Text(
+                        msg,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        color = PrimaryGreen,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                TextLink("Reenviar correo de verificación", onClick = onResend)
             }
         }
     }
@@ -180,7 +240,7 @@ fun VehicleRegisterScreen(
     var showSuccess by remember { mutableStateOf(false) }
     val uiState by vm.state.collectAsState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(SurfaceWhite)) {
         Column(modifier = Modifier.fillMaxSize()) {
             BrandHeader()
             Column(

@@ -100,6 +100,19 @@ public static class AuthEndpoints
             return Results.Ok(new { message = "Si la cuenta existe y no está verificada, se reenvió el correo." });
         });
 
+        // Poll-able endpoint: returns whether the account email has been verified.
+        group.MapGet("/check-verification", async (string email, EparkDbContext db) =>
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return Results.BadRequest();
+
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+            if (user is null)
+                return Results.NotFound();
+
+            return Results.Ok(new { verified = user.EmailVerified });
+        });
+
         group.MapPost("/login", async (LoginRequest req, EparkDbContext db) =>
         {
             var user = await db.Users
