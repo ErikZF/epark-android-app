@@ -78,8 +78,8 @@ fun ProfileScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatBox(uiState.sessionsCount.toString(), "Sesiones", Modifier.weight(1f))
-                    StatBox(uiState.paidSessionsCount.toString(), "Sesiones pagadas", Modifier.weight(1f))
-                    StatBox(uiState.finesCount.toString(), "Multas recibidas", Modifier.weight(1f))
+                    StatBox(uiState.paidSessionsCount.toString(), "pagadas", Modifier.weight(1f))
+                    StatBox(uiState.finesCount.toString(), "Multas", Modifier.weight(1f))
                 }
             }
             item {

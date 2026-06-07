@@ -50,7 +50,25 @@ class ProfileViewModel(
 
     fun refresh() {
         if (AuthState.userId <= 0) return
-        _state.value = _state.value.copy(loading = true, error = null)
+
+        // Show locally-cached data instantly so the profile is never blank while the network
+        // request runs (offline-first, mirroring the history screen for requirement 13).
+        val cachedSessions = HistoryCache.loadSessions()
+        val cachedFines = HistoryCache.loadFines()
+        _state.value = ProfileUiState(
+            loading = true,
+            fullName = AuthState.fullName,
+            email = AuthState.email,
+            initials = initialsOf(AuthState.fullName),
+            vehicles = ProfileCache.loadVehicles(),
+            paymentMethods = ProfileCache.loadPaymentMethods(),
+            sessionsCount = cachedSessions.size,
+            paidSessionsCount = cachedSessions.count(::isPaidSession),
+            finesCount = cachedFines.size,
+            notificationsCount = NotificationStore.all().size,
+            isOffline = false,
+        )
+
         viewModelScope.launch {
             var offline = false
 
@@ -80,10 +98,7 @@ class ProfileViewModel(
                 vehicles = vehicles,
                 paymentMethods = paymentMethods,
                 sessionsCount = sessions.size,
-                paidSessionsCount = sessions.count {
-                    val s = it.status.lowercase()
-                    s != "activa" && s != "active"
-                },
+                paidSessionsCount = sessions.count(::isPaidSession),
                 finesCount = fines.size,
                 notificationsCount = NotificationStore.all().size,
                 isOffline = offline,
@@ -98,6 +113,12 @@ class ProfileViewModel(
     private fun initialsOf(name: String): String =
         name.trim().split(" ").filter { it.isNotBlank() }.take(2)
             .joinToString("") { it.first().uppercase() }
+
+    // A session counts as "paid" once it is no longer active (finalized/completed).
+    private fun isPaidSession(session: ParkingSession): Boolean {
+        val s = session.status.lowercase()
+        return s != "activa" && s != "active"
+    }
 }
 
 data class VehiclesUiState(
