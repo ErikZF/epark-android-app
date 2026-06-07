@@ -13,9 +13,11 @@ object NotificationHelper {
 
     private const val CHANNEL_SESSION = "epark_session"
     private const val CHANNEL_ADMIN   = "epark_admin"
+    private const val CHANNEL_FINE    = "epark_fine"
     private const val ID_SESSION_EXPIRY = 1001
     private const val ID_ADMIN_ALERT    = 1002
     private const val ID_WELCOME        = 1003
+    private const val ID_FINE           = 1004
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -27,6 +29,11 @@ object NotificationHelper {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ADMIN, "Alertas administrativas", NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Notificaciones para el administrador municipal"
+            }
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_FINE, "Multas", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Avisos cuando recibes una multa"
             }
         )
     }
@@ -75,6 +82,33 @@ object NotificationHelper {
             .build()
 
         NotificationManagerCompat.from(context).notify(ID_WELCOME, notification)
+    }
+
+    /**
+     * Notifies a driver that an admin issued them a fine. Tapping it opens the History
+     * screen (Multas tab) where the driver can review and pay. A distinct notification id
+     * per fine keeps concurrent fines from overwriting each other in the tray.
+     */
+    fun showFineIssued(context: Context, fineId: String, zoneName: String, reason: String, amount: String) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("navigate_to", "history")
+        }
+        val notifId = ID_FINE + (fineId.hashCode() and 0xFFFF)
+        val pending = PendingIntent.getActivity(
+            context, notifId, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_FINE)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("🚫 Nueva multa recibida")
+            .setContentText("$reason en $zoneName · $amount")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(notifId, notification)
     }
 
     fun showAdminAlert(context: Context, title: String, body: String, alertId: String) {

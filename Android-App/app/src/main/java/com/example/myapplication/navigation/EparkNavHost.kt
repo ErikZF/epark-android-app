@@ -25,6 +25,7 @@ import com.example.myapplication.data.StaticContent
 import com.example.myapplication.screens.admin.*
 import com.example.myapplication.screens.user.*
 import com.example.myapplication.data.repository.AuthState
+import com.example.myapplication.data.repository.FineRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.myapplication.ui.admin.AdminAlertsViewModel
@@ -136,6 +137,38 @@ fun EparkNavHost(
         if (newOnes.isNotEmpty()) AlertPreferences.seenAlertIds = seen + newOnes.map { it.id }
     }
 
+    // Poll the driver's own fines while a driver is logged in, raising a local notification
+    // for each newly-issued fine so the conductor learns when an admin fines them. The first
+    // populated fetch only seeds the "seen" set so pre-existing fines don't flood the tray.
+    val fineRepo = remember { FineRepository() }
+    LaunchedEffect(AuthState.role, AuthState.userId) {
+        if (AuthState.role == "admin" || AuthState.userId <= 0) return@LaunchedEffect
+        // Local per-user flag: the effect restarts when the logged-in user changes, so a new
+        // session always re-seeds and never notifies the new user about pre-existing fines.
+        var seeded = false
+        while (true) {
+            val fines = runCatching { fineRepo.getUserFines() }.getOrNull()
+            if (fines != null) {
+                val seen = AlertPreferences.seenFineIds
+                if (!seeded) {
+                    AlertPreferences.seenFineIds = seen + fines.map { it.id }
+                    seeded = true
+                } else {
+                    val newOnes = fines.filter { it.id !in seen }
+                    newOnes.forEach { fine ->
+                        NotificationHelper.showFineIssued(context, fine.id, fine.zoneName, fine.reason, fine.amount)
+                        NotificationStore.add(
+                            title = "Nueva multa recibida",
+                            body = "Se te emitió una multa en ${fine.zoneName} por \"${fine.reason}\" (${fine.amount}).",
+                        )
+                    }
+                    if (newOnes.isNotEmpty()) AlertPreferences.seenFineIds = seen + newOnes.map { it.id }
+                }
+            }
+            delay(30_000)
+        }
+    }
+
     // Consume a notification deep link once splash routing has completed and the role
     // is known. onDeepLinkHandled clears it so route changes don't re-trigger navigation.
     LaunchedEffect(deepLinkTarget, deepLinkAlertId, currentRoute) {
@@ -150,6 +183,7 @@ fun EparkNavHost(
             "admin_alerts" -> if (AuthState.role == "admin") navController.navigate(Routes.ADMIN_ALERTS) else handled = false
             "active_session" -> if (AuthState.role != "admin") navController.navigate(Routes.ACTIVE_SESSION) else handled = false
             "notifications" -> if (AuthState.role != "admin") navController.navigate(Routes.NOTIFICATIONS) else handled = false
+            "history" -> if (AuthState.role != "admin") navController.navigate(Routes.HISTORY) else handled = false
             else -> handled = false
         }
         if (handled) onDeepLinkHandled()
