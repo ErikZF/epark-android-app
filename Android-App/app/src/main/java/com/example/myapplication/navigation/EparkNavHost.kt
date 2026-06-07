@@ -16,6 +16,7 @@ import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.Fine
 import com.example.myapplication.data.HistoryCache
+import com.example.myapplication.data.NotificationStore
 import com.example.myapplication.data.NotificationHelper
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.SessionAlarmScheduler
@@ -147,6 +148,7 @@ fun EparkNavHost(
             } else handled = false
             "admin_alerts" -> if (AuthState.role == "admin") navController.navigate(Routes.ADMIN_ALERTS) else handled = false
             "active_session" -> if (AuthState.role != "admin") navController.navigate(Routes.ACTIVE_SESSION) else handled = false
+            "notifications" -> if (AuthState.role != "admin") navController.navigate(Routes.NOTIFICATIONS) else handled = false
             else -> handled = false
         }
         if (handled) onDeepLinkHandled()
@@ -420,6 +422,7 @@ fun EparkNavHost(
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     HistoryCache.clear()
+                    NotificationStore.clear()
                     activeSessionVm.clearSession()
                     profileVm.clear()
                     homeVm.selectMunicipality(null)
@@ -631,6 +634,7 @@ fun EparkNavHost(
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     HistoryCache.clear()
+                    NotificationStore.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }

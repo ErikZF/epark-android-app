@@ -15,6 +15,7 @@ object NotificationHelper {
     private const val CHANNEL_ADMIN   = "epark_admin"
     private const val ID_SESSION_EXPIRY = 1001
     private const val ID_ADMIN_ALERT    = 1002
+    private const val ID_WELCOME        = 1003
 
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -50,6 +51,30 @@ object NotificationHelper {
             .build()
 
         NotificationManagerCompat.from(context).notify(ID_SESSION_EXPIRY, notification)
+    }
+
+    /** Welcome notification shown once the account has been created and verified. */
+    fun showWelcome(context: Context, fullName: String) {
+        val firstName = fullName.trim().split(" ").firstOrNull().orEmpty()
+        val title = if (firstName.isBlank()) "¡Bienvenido a epark!" else "¡Bienvenido a epark, $firstName!"
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("navigate_to", "notifications")
+        }
+        val pending = PendingIntent.getActivity(
+            context, ID_WELCOME, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_SESSION)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText("Tu cuenta fue creada y verificada con éxito. ¡Ya puedes empezar a parquear!")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(ID_WELCOME, notification)
     }
 
     fun showAdminAlert(context: Context, title: String, body: String, alertId: String) {

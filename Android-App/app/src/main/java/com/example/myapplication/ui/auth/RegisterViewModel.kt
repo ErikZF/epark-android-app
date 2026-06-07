@@ -2,6 +2,7 @@ package com.example.myapplication.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.NotificationStore
 import com.example.myapplication.data.remote.AuthResponseDto
 import com.example.myapplication.data.repository.AuthRepository
 import kotlinx.coroutines.delay
@@ -70,7 +71,12 @@ class RegisterViewModel(
                 try {
                     if (repo.checkVerification(email)) {
                         // Commit auth only now that the email is verified.
-                        pendingAuth?.let { repo.commitAuth(it) }
+                        pendingAuth?.let {
+                            repo.commitAuth(it)
+                            // Persist the welcome notification so it stays in the
+                            // Notifications screen (AuthState is populated by commitAuth).
+                            NotificationStore.addWelcome(it.fullName)
+                        }
                         _state.value = _state.value.copy(awaitingVerification = false, verified = true)
                         break
                     }
