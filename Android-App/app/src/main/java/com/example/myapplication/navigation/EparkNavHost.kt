@@ -18,6 +18,7 @@ import com.example.myapplication.data.Fine
 import com.example.myapplication.data.HistoryCache
 import com.example.myapplication.data.NotificationStore
 import com.example.myapplication.data.NotificationHelper
+import com.example.myapplication.data.ProfileCache
 import com.example.myapplication.data.ParkingZone
 import com.example.myapplication.data.SessionAlarmScheduler
 import com.example.myapplication.data.StaticContent
@@ -422,6 +423,7 @@ fun EparkNavHost(
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     HistoryCache.clear()
+                    ProfileCache.clear()
                     NotificationStore.clear()
                     activeSessionVm.clearSession()
                     profileVm.clear()
@@ -634,6 +636,7 @@ fun EparkNavHost(
                     coroutineScope.launch { AuthPreferences.clear() }
                     AuthState.clear()
                     HistoryCache.clear()
+                    ProfileCache.clear()
                     NotificationStore.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }

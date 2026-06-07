@@ -70,10 +70,19 @@ class HistoryViewModel(
 
                 finesResult.onSuccess { fetched ->
                     fines = fetched
+                    // Cache fines (pending and paid) so they remain viewable offline (req 13.1).
+                    HistoryCache.saveFines(fetched)
                 }.onFailure {
-                    // While offline the offline banner already explains the state,
-                    // so don't stack a separate fines error on top of it.
-                    if (!offline) errorMsg = errorMsg ?: "No se pudieron cargar las multas."
+                    val cachedFines = HistoryCache.loadFines()
+                    if (cachedFines.isNotEmpty()) {
+                        fines = cachedFines
+                        offline = true
+                        if (savedAt == 0L) savedAt = HistoryCache.finesLastSavedAt()
+                    } else if (!offline) {
+                        // While offline the offline banner already explains the state,
+                        // so don't stack a separate fines error on top of it.
+                        errorMsg = errorMsg ?: "No se pudieron cargar las multas."
+                    }
                 }
             }
 
