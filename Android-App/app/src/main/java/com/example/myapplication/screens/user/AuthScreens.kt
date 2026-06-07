@@ -10,10 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.data.NotificationHelper
+import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.auth.LoginViewModel
 import com.example.myapplication.ui.auth.RegisterViewModel
 import com.example.myapplication.ui.auth.VehicleRegisterViewModel
@@ -113,10 +116,16 @@ fun RegisterScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val uiState by vm.state.collectAsState()
+    val context = LocalContext.current
 
     // Navigate as soon as the polling coroutine marks the email as verified.
     LaunchedEffect(uiState.verified) {
-        if (uiState.verified) onRegisterSuccess()
+        if (uiState.verified) {
+            // Welcome notification: lands in the system tray and is stored in the
+            // Notifications screen by the ViewModel after commitAuth.
+            NotificationHelper.showWelcome(context, AuthState.fullName)
+            onRegisterSuccess()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(SurfaceWhite)) {

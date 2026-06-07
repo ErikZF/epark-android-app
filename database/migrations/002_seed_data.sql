@@ -37,7 +37,7 @@ INSERT INTO users (role_id, municipality_id, full_name, email, password_hash, ph
     (SELECT id FROM municipalities WHERE name = 'Cartago'),
     'E-Park Admin',
     'admin@epark.cr',
-    '$2a$12$placeholder_hash_replace_in_prod',
+    'Admin123!',
     '+50688880000',
     TRUE
 );

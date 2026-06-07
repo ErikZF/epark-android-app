@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.Fine
-import com.example.myapplication.data.StaticContent
+import com.example.myapplication.data.NotificationStore
 import com.example.myapplication.data.Vehicle
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.ui.payment.AddPaymentMethodViewModel
@@ -476,23 +476,46 @@ fun AddPaymentScreen(
 
 @Composable
 fun NotificationsScreen(onBack: () -> Unit, bottomBar: @Composable () -> Unit) {
+    // Notifications are read once from the local per-user store on screen entry.
+    val notifications = remember { NotificationStore.all() }
+
     Scaffold(
         topBar = { EparkTopBar("Notificaciones", onBack = onBack) },
         bottomBar = bottomBar,
         containerColor = AppBackground,
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { Spacer(Modifier.height(8.dp)) }
-            items(StaticContent.notifications) { notif ->
-                NotificationCard(title = notif.title, body = notif.body, time = notif.time)
+        if (notifications.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Notifications,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(48.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Text("No tienes notificaciones", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             }
-            item { Spacer(Modifier.height(8.dp)) }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { Spacer(Modifier.height(8.dp)) }
+                items(notifications) { notif ->
+                    NotificationCard(title = notif.title, body = notif.body, time = notif.time)
+                }
+                item { Spacer(Modifier.height(8.dp)) }
+            }
         }
     }
 }

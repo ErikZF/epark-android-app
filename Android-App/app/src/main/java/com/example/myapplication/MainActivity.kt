@@ -18,6 +18,7 @@ import com.example.myapplication.data.AlertPreferences
 import com.example.myapplication.data.AuthPreferences
 import com.example.myapplication.data.HistoryCache
 import com.example.myapplication.data.NotificationHelper
+import com.example.myapplication.data.NotificationStore
 import com.example.myapplication.navigation.EparkNavHost
 import com.example.myapplication.ui.theme.EparkTheme
 
@@ -36,6 +37,7 @@ class MainActivity : ComponentActivity() {
         AlertPreferences.init(this)
         AuthPreferences.init(this)
         HistoryCache.init(this)
+        NotificationStore.init(this)
         NotificationHelper.createChannels(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
