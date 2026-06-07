@@ -70,11 +70,16 @@ fun ProfileScreen(
                     }
                 }
             }
+            if (uiState.isOffline) {
+                item {
+                    WarningBanner("Sin conexión — mostrando datos guardados localmente")
+                }
+            }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatBox(uiState.sessionsCount.toString(), "Sesiones", Modifier.weight(1f))
-                    StatBox(uiState.paidCount.toString(), "Pagado", Modifier.weight(1f))
-                    StatBox(uiState.finesCount.toString(), "Multas", Modifier.weight(1f))
+                    StatBox(uiState.paidSessionsCount.toString(), "Sesiones pagadas", Modifier.weight(1f))
+                    StatBox(uiState.finesCount.toString(), "Multas recibidas", Modifier.weight(1f))
                 }
             }
             item {
@@ -91,18 +96,21 @@ fun ProfileScreen(
                         MenuRow(
                             icon = Icons.Outlined.DirectionsCar,
                             label = "Mis vehículos",
+                            count = uiState.vehiclesCount,
                             onClick = onVehicles,
                         )
                         HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                         MenuRow(
                             icon = Icons.Outlined.CreditCard,
                             label = "Método de pago",
+                            count = uiState.paymentMethodsCount,
                             onClick = onPaymentMethods,
                         )
                         HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
                         MenuRow(
                             icon = Icons.Outlined.Notifications,
                             label = "Notificaciones",
+                            count = uiState.notificationsCount,
                             onClick = onNotifications,
                         )
                         HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 16.dp))
@@ -181,20 +189,33 @@ private fun StatBox(value: String, label: String, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun MenuRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+private fun MenuRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    count: Int? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        IconButton(onClick = onClick, modifier = Modifier.size(24.dp)) {
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted)
+        if (count != null) {
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = PrimaryGreen,
+            )
+            Spacer(Modifier.width(4.dp))
         }
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted)
     }
 }
 

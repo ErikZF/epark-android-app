@@ -2,9 +2,16 @@ package com.example.myapplication.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.Fine
+import com.example.myapplication.data.HistoryCache
+import com.example.myapplication.data.NotificationStore
+import com.example.myapplication.data.ParkingSession
+import com.example.myapplication.data.PaymentMethod
+import com.example.myapplication.data.ProfileCache
 import com.example.myapplication.data.Vehicle
 import com.example.myapplication.data.repository.AuthState
 import com.example.myapplication.data.repository.FineRepository
+import com.example.myapplication.data.repository.PaymentRepository
 import com.example.myapplication.data.repository.SessionRepository
 import com.example.myapplication.data.repository.VehicleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,16 +25,24 @@ data class ProfileUiState(
     val email: String = "",
     val initials: String = "",
     val vehicles: List<Vehicle> = emptyList(),
+    val paymentMethods: List<PaymentMethod> = emptyList(),
     val sessionsCount: Int = 0,
-    val paidCount: Int = 0,
+    val paidSessionsCount: Int = 0,
     val finesCount: Int = 0,
+    val notificationsCount: Int = 0,
+    // True when one or more sections fell back to locally-cached data (offline).
+    val isOffline: Boolean = false,
     val error: String? = null,
-)
+) {
+    val vehiclesCount: Int get() = vehicles.size
+    val paymentMethodsCount: Int get() = paymentMethods.size
+}
 
 class ProfileViewModel(
     private val vehicleRepo: VehicleRepository = VehicleRepository(),
     private val sessionRepo: SessionRepository = SessionRepository(),
     private val fineRepo: FineRepository = FineRepository(),
+    private val paymentRepo: PaymentRepository = PaymentRepository(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
@@ -37,32 +52,42 @@ class ProfileViewModel(
         if (AuthState.userId <= 0) return
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
-            try {
-                val vehicles = vehicleRepo.getVehicles()
-                val sessions = sessionRepo.getHistory()
-                val fines = fineRepo.getUserFines()
-                _state.value = ProfileUiState(
-                    loading = false,
-                    fullName = AuthState.fullName,
-                    email = AuthState.email,
-                    initials = initialsOf(AuthState.fullName),
-                    vehicles = vehicles,
-                    sessionsCount = sessions.size,
-                    paidCount = sessions.count { 
-                        val s = it.status.lowercase()
-                        s != "activa" && s != "active" 
-                    },
-                    finesCount = fines.count { !it.isPaid },
-                )
-            } catch (e: Exception) {
-                _state.value = ProfileUiState(
-                    loading = false,
-                    fullName = AuthState.fullName,
-                    email = AuthState.email,
-                    initials = initialsOf(AuthState.fullName),
-                    error = "No se pudo cargar el perfil.",
-                )
-            }
+            var offline = false
+
+            // Each section falls back to its local cache when the network fails, so the
+            // profile summary stays usable offline (extends requirement 13's local history).
+            val vehicles = runCatching { vehicleRepo.getVehicles() }
+                .onSuccess { ProfileCache.saveVehicles(it) }
+                .getOrElse { offline = true; ProfileCache.loadVehicles() }
+
+            val paymentMethods = runCatching { paymentRepo.getMethods() }
+                .onSuccess { ProfileCache.savePaymentMethods(it) }
+                .getOrElse { offline = true; ProfileCache.loadPaymentMethods() }
+
+            val sessions: List<ParkingSession> = runCatching { sessionRepo.getHistory() }
+                .onSuccess { HistoryCache.saveSessions(it) }
+                .getOrElse { offline = true; HistoryCache.loadSessions() }
+
+            val fines: List<Fine> = runCatching { fineRepo.getUserFines() }
+                .onSuccess { HistoryCache.saveFines(it) }
+                .getOrElse { offline = true; HistoryCache.loadFines() }
+
+            _state.value = ProfileUiState(
+                loading = false,
+                fullName = AuthState.fullName,
+                email = AuthState.email,
+                initials = initialsOf(AuthState.fullName),
+                vehicles = vehicles,
+                paymentMethods = paymentMethods,
+                sessionsCount = sessions.size,
+                paidSessionsCount = sessions.count {
+                    val s = it.status.lowercase()
+                    s != "activa" && s != "active"
+                },
+                finesCount = fines.size,
+                notificationsCount = NotificationStore.all().size,
+                isOffline = offline,
+            )
         }
     }
 
