@@ -20,4 +20,10 @@ object AlertPreferences {
     var seenAlertIds: Set<String>
         get() = prefs.getStringSet("seen_alert_ids", emptySet())?.toSet() ?: emptySet()
         set(value) { prefs.edit().putStringSet("seen_alert_ids", value).apply() }
+
+    // IDs of fines already surfaced to the driver as a system notification, so a newly
+    // issued fine raises a tray notification at most once across polls.
+    var seenFineIds: Set<String>
+        get() = prefs.getStringSet("seen_fine_ids", emptySet())?.toSet() ?: emptySet()
+        set(value) { prefs.edit().putStringSet("seen_fine_ids", value).apply() }
 }
